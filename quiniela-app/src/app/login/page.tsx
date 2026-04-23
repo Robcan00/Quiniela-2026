@@ -95,13 +95,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl">
-        <h1 className="text-2xl font-bold mb-2">
+    <main
+      className="relative min-h-screen w-full flex items-center justify-center px-6 text-white"
+      style={{
+        backgroundImage: "url('/landing-bg.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60" />
+
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-black/60 p-8 shadow-2xl backdrop-blur-xl">
+        <h1 className="mb-2 text-2xl font-bold">
           {isRegister ? 'Crear cuenta' : 'Iniciar sesión'}
         </h1>
 
-        <p className="text-sm text-zinc-400 mb-6">
+        <p className="mb-6 text-sm text-zinc-300">
           {isRegister
             ? 'Registra tu usuario con correo y contraseña'
             : 'Entra con tu correo y contraseña'}
@@ -157,7 +166,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-white text-black py-3 font-medium disabled:opacity-50"
+            className="w-full rounded-xl bg-white py-3 font-medium text-black disabled:opacity-50"
           >
             {loading
               ? isRegister
@@ -179,16 +188,21 @@ export default function LoginPage() {
             setLastName('')
             setPhone('')
           }}
-          className="mt-4 w-full text-sm text-zinc-400 hover:text-white"
+          className="mt-5 w-full text-sm text-zinc-300 transition hover:text-white"
         >
           {isRegister
-            ? 'Ya tengo cuenta'
+            ? 'Ya tengo cuenta, quiero iniciar sesión'
             : 'No tengo cuenta, quiero registrarme'}
         </button>
 
-        {message && <p className="mt-4 text-sm text-green-400">{message}</p>}
-        {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+        {message && (
+          <p className="mt-4 text-center text-sm text-emerald-300">{message}</p>
+        )}
+
+        {error && (
+          <p className="mt-4 text-center text-sm text-red-300">{error}</p>
+        )}
       </div>
-    </div>
+    </main>
   )
 }

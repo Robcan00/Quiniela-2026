@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/supabase'
 import { groupStageMatches, type Match } from '@/data/groupStageMatches'
@@ -2452,6 +2453,7 @@ const badgeDetail = !hasPrediction
 }
 
 export default function Home() {
+  const router = useRouter()
   const [user, setUser] = useState<UserState>(null)
   const [view, setView] = useState<ViewMode>('dashboard')
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
@@ -2964,19 +2966,27 @@ creatingDefaultEntryRef.current = null
   setActiveEntryId(nextActiveId)
   setPredictions({})
 }
-
   if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <a
-          href="/login"
-          className="rounded-xl bg-white text-black px-6 py-3 font-semibold"
-        >
-          Ir a login
-        </a>
-      </div>
-    )
-  }
+  return (
+    <div
+      className="relative min-h-screen w-full overflow-hidden bg-black"
+      style={{
+        backgroundImage: "url('/landing-bg.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute inset-0 bg-black/10" />
+
+      <button
+  onClick={() => router.push('/login')}
+  className="absolute left-1/2 top-[64%] z-20 h-[100px] w-[438px] -translate-x-1/2 rounded-[24px] bg-transparent text-transparent"
+>
+  Ir a login
+</button>
+    </div>
+  )
+}
 
   if (view === 'picks') {
   return (
