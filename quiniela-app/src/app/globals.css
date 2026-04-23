@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b;
+  --foreground: #ffffff;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 30%),
+    linear-gradient(to bottom, #0a0a0a, #09090b 30%, #050505 100%);
+  color: var(--foreground);
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 999px;
+}
+
+* {
+  box-sizing: border-box;
+}
