@@ -237,8 +237,8 @@ export default function RulesPage() {
             <div className="mt-5 grid gap-3 md:grid-cols-4">
               <StatPill label="Cierre de picks" value="11 jun 2026 · 10:00 AM" />
               <StatPill label="Pago límite" value="10 jun 2026 · 10:00 AM" />
-              <StatPill label="Costo por quiniela" value="$2,700 MXN" />
-              <StatPill label="Bolsa mínima garantizada" value="$500,000 MXN" />
+              <StatPill label="Costo por quiniela" value="$2,500 MXN" />
+              <StatPill label="Bolsa mínima garantizada" value="$350,000 MXN" />
             </div>
           </div>
 
@@ -340,19 +340,19 @@ export default function RulesPage() {
 
             <SectionCard number="7" title="Cuota de ingreso" icon={Wallet}>
               <p>
-                La cuota de ingreso por cada quiniela es de <span className="font-black text-[#6fe58b]">$2,700.00 MXN</span>, de los cuales <span className="font-bold text-white">$2,500.00 MXN</span> integrarán la bolsa acumulada y <span className="font-bold text-white">$200.00 MXN</span> se destinarán a gastos de organización, implementación y administración.
+                La cuota de ingreso por cada quiniela es de <span className="font-black text-[#6fe58b]">$2,500.00 MXN</span>, de los cuales <span className="font-bold text-white">$2,300.00 MXN</span> integrarán la bolsa acumulada y <span className="font-bold text-white">$200.00 MXN</span> se destinarán a gastos de organización, implementación y administración.
               </p>
 
               <div className="rounded-[22px] border border-green-500/35 bg-green-500/5 p-5">
                 <div className="text-sm uppercase tracking-wide text-zinc-300">Cuota por quiniela</div>
-                <div className="mt-1 text-4xl font-black text-[#6fe58b]">$2,700.00 MXN</div>
+                <div className="mt-1 text-4xl font-black text-[#6fe58b]">$2,500.00 MXN</div>
               </div>
             </SectionCard>
 
             <SectionCard number="8" title="Bolsa mínima garantizada" icon={Landmark}>
               <div className="rounded-[22px] border border-[#f0c24e]/35 bg-[#f0c24e]/5 p-5 text-center">
                 <div className="text-sm uppercase tracking-wide text-zinc-400">Bolsa mínima garantizada</div>
-                <div className="mt-2 text-4xl font-black text-[#f0c24e]">$500,000.00 MXN</div>
+                <div className="mt-2 text-4xl font-black text-[#f0c24e]">$350,000.00 MXN</div>
               </div>
 
               <div className="rounded-[22px] border border-[#f0c24e]/25 bg-gradient-to-br from-[#f0c24e]/10 via-white/[0.03] to-transparent p-5 shadow-lg">
@@ -384,9 +384,9 @@ export default function RulesPage() {
               <div className="rounded-[22px] border border-white/10 bg-white/5 p-5">
                 <div className="grid gap-2 text-zinc-100 sm:grid-cols-2">
                   <div>1 quiniela</div>
-                  <div className="font-bold">$2,700.00 MXN</div>
+                  <div className="font-bold">$2,500.00 MXN</div>
                   <div>2 quinielas</div>
-                  <div className="font-bold">$5,400.00 MXN</div>
+                  <div className="font-bold">$5,000.00 MXN</div>
                   <div>3 quinielas</div>
                   <div className="font-bold">$10,800.00 MXN</div>
                   <div>Y así sucesivamente</div>
