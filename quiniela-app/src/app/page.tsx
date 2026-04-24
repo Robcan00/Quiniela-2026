@@ -106,28 +106,99 @@ type PersonalRankInfo = {
 }
 
 const MATCHES: Match[] = groupStageMatches
+const PUBLIC_REVEAL_DATE = new Date('2026-06-11T10:00:00-06:00')
+
+function getEmailUserName(email?: string | null) {
+  return email?.split('@')[0]?.trim().toLowerCase() || ''
+}
+
+function resolveProfileFullName(profile: any, fallbackEmail?: string | null) {
+  const fullName = profile?.full_name?.trim?.() || ''
+  const firstName = profile?.first_name?.trim?.() || ''
+  const lastName = profile?.last_name?.trim?.() || ''
+  const combinedName = `${firstName} ${lastName}`.trim()
+  const emailUserName = getEmailUserName(profile?.email || fallbackEmail)
+
+  if (combinedName && fullName.toLowerCase() === emailUserName) {
+    return combinedName
+  }
+
+  return fullName || combinedName || emailUserName || 'Jugador'
+}
+
+function getStoredProfile(userId: string) {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.localStorage.getItem(`quiniela-profile-${userId}`)
+    return raw ? (JSON.parse(raw) as Partial<ParticipantProfileRow>) : null
+  } catch {
+    return null
+  }
+}
+
+function storeProfile(userId: string, profile: Partial<ParticipantProfileRow>) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(`quiniela-profile-${userId}`, JSON.stringify(profile))
+  } catch {
+    // noop
+  }
+}
+
+
+function PublicRevealLockedCard() {
+  return (
+    <div className="mt-8 overflow-hidden rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-transparent p-6 text-center shadow-[0_0_40px_rgba(250,204,21,0.10)] sm:p-8">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-3xl shadow-[0_0_30px_rgba(250,204,21,0.18)]">
+        🔒
+      </div>
+
+      <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-yellow-400 sm:text-3xl">
+        Quinielas bloqueadas
+      </h2>
+
+      <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
+        Para mantener la competencia justa, las quinielas de los demás participantes estarán ocultas hasta que cierre la captura de pronósticos.
+      </p>
+
+      <div className="mx-auto mt-6 max-w-md rounded-2xl border border-white/10 bg-black/30 px-5 py-4">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+          Se desbloquea el
+        </p>
+        <p className="mt-2 text-lg font-bold text-white">
+          11 de junio de 2026 · 10:00 AM (CDMX)
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function DashboardCard({ title, description, badge, onClick }: DashboardCardProps) {
   return (
-    <div
-  className="rounded-3xl border border-yellow-400/20 bg-white/5 p-5 shadow-xl transition hover:bg-yellow-400/10 hover:border-yellow-400/40 hover:shadow-[0_0_30px_rgba(250,204,21,0.25)]"
->
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-xl md:text-2xl font-bold tracking-tight text-yellow-400">
-  {title}
-</h3>
-        {badge && (
-          <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-            {badge}
-          </span>
-        )}
-      </div>
+    <div className="flex h-full min-h-[230px] flex-col justify-between rounded-2xl border border-yellow-400/20 bg-white/5 p-4 shadow-xl transition hover:border-yellow-400/40 hover:bg-yellow-400/10 sm:min-h-[240px] md:min-h-[250px]">
+      <div className="min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 text-xl font-bold tracking-tight text-yellow-400 md:text-2xl">
+            {title}
+          </h3>
 
-      <p className="mt-3 text-sm leading-6 text-white/65">{description}</p>
+          {badge && (
+            <span className="shrink-0 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+              {badge}
+            </span>
+          )}
+        </div>
+
+        <p className="mt-3 text-sm leading-6 text-white/65">
+          {description}
+        </p>
+      </div>
 
       <button
         onClick={onClick}
-        className="mt-5 w-full rounded-xl bg-white py-3 text-sm font-semibold text-black transition hover:bg-white/90"
+        className="mt-6 w-full rounded-xl bg-white py-3 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.99]"
       >
         Abrir
       </button>
@@ -261,28 +332,12 @@ function LeaderboardScreen({
     loadLeaderboard()
 
     const channel = supabase
-  .channel('leaderboard-refresh')
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'predictions' },
-    loadLeaderboard
-  )
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'matches' },
-    loadLeaderboard
-  )
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'entries' },
-    loadLeaderboard
-  )
-  .on(
-    'postgres_changes',
-    { event: '*', schema: 'public', table: 'profiles' },
-    loadLeaderboard
-  )
-  .subscribe()
+      .channel('leaderboard-refresh')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, loadLeaderboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, loadLeaderboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, loadLeaderboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, loadLeaderboard)
+      .subscribe()
 
     return () => {
       mounted = false
@@ -293,154 +348,261 @@ function LeaderboardScreen({
   const currentUserPosition =
     rows.findIndex((row) => row.user_id === currentUser?.id) + 1 || null
 
+  const getRankIcon = (index: number) => {
+    if (index === 0) return '🥇'
+    if (index === 1) return '🥈'
+    if (index === 2) return '🥉'
+    return `#${index + 1}`
+  }
+
+  const leader = rows[0]
+
   return (
-    <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
+      <div className="mx-auto w-full max-w-7xl">
         <button
           onClick={onBack}
-          className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10"
+          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
         >
-          ← Volver a Menu Principal
+          ← Volver
         </button>
 
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 shadow-2xl md:p-8">
+        <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-5 shadow-2xl sm:p-6 md:p-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                Ranking general
+              </p>
 
-              <h1 className="text-3xl font-bold tracking-tight text-yellow-400 md:text-5xl">
-  Tabla General de Resultados
+              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-yellow-400 sm:text-4xl md:text-5xl">
+                Tabla General
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70 md:text-base">
-                Ranking general por quiniela, mostrando jugador, nombre de quiniela y puntos acumulados.
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 md:text-base">
+                Posiciones por quiniela, puntos acumulados, marcadores exactos y aciertos.
               </p>
             </div>
 
-            <div className="grid min-w-[280px] grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:min-w-[280px]">
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
                   Quinielas
                 </p>
-                <p className="mt-2 text-sm font-semibold text-white">{rows.length}</p>
+                <p className="mt-2 text-2xl font-bold text-white">{rows.length}</p>
               </div>
+
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
                   Tu posición
                 </p>
-                <p className="mt-2 text-sm font-semibold text-white">
-                  {currentUserPosition || '—'}
+                <p className="mt-2 text-2xl font-bold text-yellow-400">
+                  {currentUserPosition ? `#${currentUserPosition}` : '—'}
                 </p>
               </div>
             </div>
           </div>
-        </div>
-        {rows.length > 0 && (
-  <div className="mt-6 rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-transparent to-yellow-500/5 p-6 shadow-[0_0_40px_rgba(250,204,21,0.15)]">
-    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-5">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-yellow-400/40 bg-yellow-400/10 text-3xl shadow-[0_0_25px_rgba(250,204,21,0.4)]">
-          🥇
-        </div>
+        </section>
 
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-yellow-300/70">
-            Líder actual
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-white">
-            {rows[0].full_name || 'Participante'}
-          </h2>
-          <p className="text-sm text-yellow-300">
-            {rows[0].entry_name || 'Quiniela'}
-          </p>
-        </div>
-      </div>
+        {leader && (
+          <section className="mt-5 rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-transparent to-yellow-500/5 p-5 shadow-[0_0_40px_rgba(250,204,21,0.12)] sm:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-yellow-400/40 bg-yellow-400/10 text-3xl shadow-[0_0_25px_rgba(250,204,21,0.25)] sm:h-16 sm:w-16">
+                  🥇
+                </div>
 
-      <div className="grid grid-cols-2 gap-3 md:min-w-[220px]">
-        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-            Puntos
-          </p>
-          <p className="mt-2 text-2xl font-bold text-yellow-400">
-            {rows[0].total_points}
-          </p>
-        </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-yellow-300/70">
+                    Líder actual
+                  </p>
+                  <h2 className="mt-1 truncate text-xl font-bold text-white sm:text-2xl">
+                    {leader.full_name || 'Participante'}
+                  </h2>
+                  <p className="truncate text-sm font-semibold text-yellow-300">
+                    {leader.entry_name || 'Quiniela'}
+                  </p>
+                </div>
+              </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-            Exactos
-          </p>
-          <p className="mt-2 text-2xl font-bold text-white">
-            {rows[0].exact_hits}
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:min-w-[360px]">
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    Puntos
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-yellow-400 sm:text-2xl">
+                    {leader.total_points}
+                  </p>
+                </div>
 
-        <div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-white/5">
-          <div className="grid grid-cols-[90px_1.2fr_1.2fr_150px_150px_120px] border-b border-yellow-500/20 bg-yellow-500/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
-  <div>Posición</div>
-  <div>Jugador</div>
-  <div>Quiniela</div>
-  <div className="text-center">Puntos Totales</div>
-  <div className="text-center">Marcadores Exactos</div>
-  <div className="text-center">Aciertos</div>
-</div>
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    Exactos
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-white sm:text-2xl">
+                    {leader.exact_hits}
+                  </p>
+                </div>
 
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    Aciertos
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-white sm:text-2xl">
+                    {leader.outcome_hits}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section className="mt-6">
           {loading ? (
-            <div className="px-6 py-10 text-sm text-white/60">Cargando leaderboard...</div>
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
+              Cargando leaderboard...
+            </div>
           ) : rows.length === 0 ? (
-            <div className="px-6 py-10">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
               <p className="text-lg font-semibold">Todavía no hay puntos calculados</p>
               <p className="mt-2 text-sm leading-6 text-white/65">
                 En cuanto captures resultados oficiales y existan picks guardados, aparecerán aquí.
               </p>
             </div>
           ) : (
-            rows.map((row, index) => {
-              const isCurrentUser = row.user_id === currentUser?.id
+            <>
+              {/* MOBILE CARDS */}
+              <div className="space-y-3 md:hidden">
+                {rows.map((row, index) => {
+                  const isCurrentUser = row.user_id === currentUser?.id
 
-              return (
-                <div
-                  key={row.entry_id ?? `${row.user_id}-${index}`}
-                  className={`grid grid-cols-[90px_1.2fr_1.2fr_150px_150px_120px] items-center border-b border-white/10 px-6 py-4 text-sm ${
-                    isCurrentUser ? 'bg-emerald-400/10' : 'bg-transparent'
-                  }`}
-                >
-                  <div className="flex items-center justify-center">
-  {index === 0 ? (
-    <span className="text-3xl md:text-4xl drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">
-      🥇
-    </span>
-  ) : index === 1 ? (
-    <span className="text-3xl md:text-4xl drop-shadow-[0_0_12px_rgba(226,232,240,0.5)]">
-      🥈
-    </span>
-  ) : index === 2 ? (
-    <span className="text-3xl md:text-4xl drop-shadow-[0_0_12px_rgba(180,83,9,0.5)]">
-      🥉
-    </span>
-  ) : (
-    <span className="text-sm font-bold text-yellow-400">
-      #{index + 1}
-    </span>
-  )}
-</div>
-                  <div>
-                    <p className="font-semibold text-white">{row.full_name || 'Participante'}</p>
-                    <p className="text-xs text-white/45">
-                      {isCurrentUser ? 'Tu usuario actual' : 'Jugador'}
-                    </p>
-                  </div>
-                  <div className="font-semibold text-white">{row.entry_name || 'Quiniela'}</div>
-                  <div className="text-center font-semibold text-white">{row.total_points}</div>
-<div className="text-center text-white/80">{row.exact_hits}</div>
-<div className="text-center text-white/80">{row.outcome_hits}</div>
+                  return (
+                    <article
+                      key={row.entry_id ?? `${row.user_id}-${index}`}
+                      className={`rounded-3xl border p-4 shadow-xl transition duration-200 active:scale-[0.99] ${
+                        isCurrentUser
+                          ? 'border-emerald-400/30 bg-emerald-400/10'
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div
+                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg font-black ${
+                              index <= 2
+                                ? 'border-yellow-400/30 bg-yellow-400/10 text-2xl'
+                                : 'border-white/10 bg-black/30 text-yellow-400'
+                            }`}
+                          >
+                            {getRankIcon(index)}
+                          </div>
+
+                          <div className="min-w-0">
+                            <h3 className="truncate text-base font-bold text-white">
+                              {row.full_name || 'Participante'}
+                            </h3>
+
+                            <p className="mt-1 truncate text-sm text-yellow-300">
+                              {row.entry_name || 'Quiniela'}
+                            </p>
+
+                            {isCurrentUser && (
+                              <span className="mt-3 inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                Tú
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                            Puntos
+                          </p>
+                          <p className="mt-1 text-3xl font-black text-yellow-400">
+                            {row.total_points}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                            Exactos
+                          </p>
+                          <p className="mt-1 text-xl font-bold text-white">
+                            {row.exact_hits}
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                            Aciertos
+                          </p>
+                          <p className="mt-1 text-xl font-bold text-white">
+                            {row.outcome_hits}
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+
+              {/* DESKTOP TABLE */}
+              <div className="hidden overflow-hidden rounded-3xl border border-white/10 bg-white/5 md:block">
+                <div className="grid grid-cols-[90px_1.2fr_1.2fr_150px_150px_120px] border-b border-yellow-500/20 bg-yellow-500/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
+                  <div>Posición</div>
+                  <div>Jugador</div>
+                  <div>Quiniela</div>
+                  <div className="text-center">Puntos</div>
+                  <div className="text-center">Exactos</div>
+                  <div className="text-center">Aciertos</div>
                 </div>
-              )
-            })
+
+                {rows.map((row, index) => {
+                  const isCurrentUser = row.user_id === currentUser?.id
+
+                  return (
+                    <div
+                      key={row.entry_id ?? `${row.user_id}-${index}`}
+                      className={`grid grid-cols-[90px_1.2fr_1.2fr_150px_150px_120px] items-center border-b border-white/10 px-6 py-4 text-sm transition duration-200 last:border-b-0 hover:bg-white/[0.06] ${
+                        isCurrentUser ? 'bg-emerald-400/10' : 'bg-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center text-xl font-bold text-yellow-400">
+                        {getRankIcon(index)}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-white">
+                          {row.full_name || 'Participante'}
+                        </p>
+                        <p className="text-xs text-white/45">
+                          {isCurrentUser ? 'Tu usuario actual' : 'Jugador'}
+                        </p>
+                      </div>
+
+                      <div className="truncate font-semibold text-white">
+                        {row.entry_name || 'Quiniela'}
+                      </div>
+
+                      <div className="text-center text-lg font-black text-yellow-400">
+                        {row.total_points}
+                      </div>
+
+                      <div className="text-center font-semibold text-white/80">
+                        {row.exact_hits}
+                      </div>
+
+                      <div className="text-center font-semibold text-white/80">
+                        {row.outcome_hits}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
-        </div>
+        </section>
       </div>
     </main>
   )
@@ -458,6 +620,11 @@ function PicksScreen({
   onBack: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [autoSaving, setAutoSaving] = useState(false)
+const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+const didUserEditRef = useRef(false)
   const [officialResults, setOfficialResults] = useState<Record<string, OfficialResult>>({})
   const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
 
@@ -629,6 +796,8 @@ const isGlobalLock = new Date() >= globalDeadline
   ) => {
     if (value !== '' && !/^\d+$/.test(value)) return
 
+    didUserEditRef.current = true
+
     setPredictions((prev) => ({
       ...prev,
       [matchId]: {
@@ -639,45 +808,118 @@ const isGlobalLock = new Date() >= globalDeadline
   }
 
   const handleSave = async () => {
-    if (!activeEntryId) {
-      alert('No hay quiniela activa')
+  setSaveMessage('')
+  setSaveError('')
+
+  if (!activeEntryId) {
+    setSaveError('No hay una quiniela activa.')
+    return
+  }
+
+  setSaving(true)
+
+  try {
+    const rows = Object.entries(predictions)
+      .filter(([, p]) => p.homeScore !== '' && p.awayScore !== '')
+      .map(([matchId, p]) => ({
+        entry_id: activeEntryId,
+        match_id: matchId,
+        home_score_predicted: Number(p.homeScore),
+        away_score_predicted: Number(p.awayScore),
+      }))
+
+    if (rows.length === 0) {
+      setSaveError('No hay pronósticos para guardar.')
+      setSaving(false)
       return
     }
 
-    setSaving(true)
+    const { error } = await supabase
+      .from('predictions')
+      .upsert(rows, { onConflict: 'entry_id,match_id' })
 
-    try {
-      const rows = Object.entries(predictions)
-        .filter(([, p]) => p.homeScore !== '' && p.awayScore !== '')
-        .map(([matchId, p]) => ({
-          entry_id: activeEntryId,
-          match_id: matchId,
-          home_score_predicted: Number(p.homeScore),
-          away_score_predicted: Number(p.awayScore),
-        }))
+    if (error) {
+      setSaveError(`Error al guardar: ${error.message}`)
+      return
+    }
 
-      if (rows.length === 0) {
-        alert('No hay pronósticos para guardar')
-        setSaving(false)
-        return
-      }
+    didUserEditRef.current = false
+    setSaveMessage('Pronósticos guardados correctamente ✅')
 
-      const { error } = await supabase
-        .from('predictions')
-        .upsert(rows, { onConflict: 'entry_id,match_id' })
+    setTimeout(() => {
+      setSaveMessage('')
+    }, 3000)
+  } catch (err) {
+    console.error(err)
+    setSaveError('Error inesperado al guardar.')
+  } finally {
+    setSaving(false)
+  }
+}
+const handleAutoSave = async () => {
+  if (!activeEntryId || isGlobalLock) return
 
-      if (error) {
-        alert(`Error al guardar: ${error.message}`)
-      } else {
-        alert('Pronósticos guardados 🔥')
-      }
-    } catch (err) {
-      console.error(err)
-      alert('Error inesperado al guardar')
-    } finally {
-      setSaving(false)
+  try {
+    setAutoSaving(true)
+    setSaveError('')
+
+    const rows = Object.entries(predictions)
+      .filter(([, p]) => p.homeScore !== '' && p.awayScore !== '')
+      .map(([matchId, p]) => ({
+        entry_id: activeEntryId,
+        match_id: matchId,
+        home_score_predicted: Number(p.homeScore),
+        away_score_predicted: Number(p.awayScore),
+      }))
+
+    if (rows.length === 0) return
+
+    const { error } = await supabase
+      .from('predictions')
+      .upsert(rows, { onConflict: 'entry_id,match_id' })
+
+    if (error) {
+      setSaveError(`Error en guardado automático: ${error.message}`)
+      return
+    }
+
+    didUserEditRef.current = false
+    setSaveMessage('✓ Guardado')
+
+    setTimeout(() => {
+      setSaveMessage('')
+    }, 1500)
+  } catch (err) {
+    console.error('Auto-save error:', err)
+    setSaveError('Error inesperado en guardado automático.')
+  } finally {
+    setAutoSaving(false)
+  }
+}
+
+useEffect(() => {
+  if (!activeEntryId || isGlobalLock || !didUserEditRef.current) return
+
+  const hasAnyCompletePrediction = Object.values(predictions).some(
+    (prediction) => prediction.homeScore !== '' && prediction.awayScore !== ''
+  )
+
+  if (!hasAnyCompletePrediction) return
+
+  if (autoSaveTimeout.current) {
+    clearTimeout(autoSaveTimeout.current)
+  }
+
+  autoSaveTimeout.current = setTimeout(() => {
+    handleAutoSave()
+  }, 1200)
+
+  return () => {
+    if (autoSaveTimeout.current) {
+      clearTimeout(autoSaveTimeout.current)
     }
   }
+}, [predictions, activeEntryId, isGlobalLock])
 
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
@@ -686,7 +928,7 @@ const isGlobalLock = new Date() >= globalDeadline
           <div>
             <button
               onClick={onBack}
-              className="mb-4 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10"
+              className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
             >
               ← Volver a Menu Principal
             </button>
@@ -696,7 +938,7 @@ const isGlobalLock = new Date() >= globalDeadline
             </h1>
            <p className="mt-3 max-w-none text-sm leading-6 text-white/70 md:text-base">
   A continuación ingresa tu pronóstico de marcador para cada uno de los partidos. 
-  Mucha suerte y no te olvides de darle al botón de guardar!
+  Mucha suerte. Tus cambios se guardan automáticamente.
 </p>
 
 <div className="mt-4 max-w-none rounded-2xl border border-red-400/20 bg-red-400/10 p-4">
@@ -761,11 +1003,6 @@ const isGlobalLock = new Date() >= globalDeadline
     La captura de pronósticos ya está cerrada. Todos los marcadores no ingresados se tomarán como “0”.
   </p>
 )}
-  {isGlobalLock && (
-  <p className="mt-3 text-sm font-bold text-red-400 underline">
-    La captura de pronósticos ya está cerrada. Todos los marcadores no ingresados se tomarán como “0”.
-  </p>
-)}
 </div>
         <div className="mt-8 space-y-8">
           {Object.entries(groupedMatches).map(([groupName, matches]) => (
@@ -805,7 +1042,7 @@ const isGlobalLock = new Date() >= globalDeadline
                   return (
                     <div
                       key={match.id}
-                      className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl transition hover:bg-white/[0.07] hover:border-white/20"
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-lg transition hover:bg-white/[0.06] hover:border-yellow-400/20"
   >
                 
                       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center">
@@ -814,7 +1051,7 @@ const isGlobalLock = new Date() >= globalDeadline
                             {match.kickoff}
                           </p>
 
-                          <div className="mt-4 mx-auto grid w-full max-w-4xl grid-cols-[1fr_120px_1fr] items-center gap-6">
+                          <div className="mt-4 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
                             <div className="flex items-center justify-center gap-4">
   <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
     <Image
@@ -822,14 +1059,14 @@ const isGlobalLock = new Date() >= globalDeadline
       alt={match.homeTeam}
       width={56}
       height={40}
-      className="h-10 w-14 object-cover"
+      className="h-8 w-10 object-cover sm:h-10 sm:w-14"
     />
   </div>
   <div className="text-left">
     <div className="text-xs uppercase tracking-[0.2em] text-white/40">
       {match.homeCode}
     </div>
-    <span className="text-2xl font-bold tracking-tight">{match.homeTeam}</span>
+    <span className="text-lg sm:text-2xl font-bold tracking-tight">{match.homeTeam}</span>
   </div>
 </div>
 
@@ -854,7 +1091,7 @@ const isGlobalLock = new Date() >= globalDeadline
     <div className="text-xs uppercase tracking-[0.2em] text-white/40">
       {match.awayCode}
     </div>
-    <span className="text-2xl font-bold tracking-tight">
+    <span className="text-lg sm:text-2xl font-bold tracking-tight">
       {match.awayTeam}
     </span>
   </div>
@@ -899,28 +1136,32 @@ const isGlobalLock = new Date() >= globalDeadline
                             Tu pronóstico
                           </p>
 
-                          <div className="flex items-center justify-end pr-4 gap-3">
+                          <div className="flex items-center justify-center gap-3">
                             <input
-  type="text"
-  inputMode="numeric"
-  value={current.homeScore}
-  placeholder=""
-  onChange={(e) =>
-    handleChange(match.id, 'homeScore', e.target.value)
-  }
-  className="h-14 w-16 rounded-2xl border border-white/10 bg-white/10 text-center text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
-/>
+                              type="text"
+                              inputMode="numeric"
+                              value={current.homeScore}
+                              placeholder="0"
+                              disabled={locked}
+                              onChange={(e) =>
+                                handleChange(match.id, 'homeScore', e.target.value)
+                              }
+                              className="h-12 w-14 rounded-2xl border border-white/10 bg-white/10 text-center text-xl font-bold text-white outline-none transition focus:border-yellow-400/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-14 sm:w-16"
+                            />
+
                             <span className="text-lg font-semibold text-white/50">-</span>
+
                             <input
-  type="text"
-  inputMode="numeric"
-  value={current.awayScore}
-  placeholder=""
-  onChange={(e) =>
-    handleChange(match.id, 'awayScore', e.target.value)
-  }
-  className="h-14 w-16 rounded-2xl border border-white/10 bg-white/10 text-center text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
-/>
+                              type="text"
+                              inputMode="numeric"
+                              value={current.awayScore}
+                              placeholder="0"
+                              disabled={locked}
+                              onChange={(e) =>
+                                handleChange(match.id, 'awayScore', e.target.value)
+                              }
+                              className="h-12 w-14 rounded-2xl border border-white/10 bg-white/10 text-center text-xl font-bold text-white outline-none transition focus:border-yellow-400/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30 sm:h-14 sm:w-16"
+                            />
                           </div>
                         </div>
                       </div>
@@ -930,13 +1171,27 @@ const isGlobalLock = new Date() >= globalDeadline
 
                 <div className="mt-6 flex justify-end">
   <div className="w-[250px]">
-    <button
-  onClick={handleSave}
-  disabled={saving || isGlobalLock}
-      className="w-full rounded-2xl bg-white px-6 py-4 text-base font-bold text-black transition hover:bg-white/90 disabled:opacity-50"
-    >
-      {saving ? 'Guardando...' : isGlobalLock ? 'Cerrado' : 'Guardar'}
-    </button>
+    {saveMessage && (
+  <div className="mb-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-center text-sm font-semibold text-emerald-200">
+    {saveMessage}
+  </div>
+)}
+
+{saveError && (
+  <div className="mb-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-center text-sm font-semibold text-red-200">
+    {saveError}
+  </div>
+)}
+
+{autoSaving && (
+  <div className="mb-3 flex items-center justify-center gap-2 text-xs text-white/50 animate-pulse">
+    <div className="h-2 w-2 rounded-full bg-yellow-400" />
+    Guardando...
+  </div>
+)}
+<p className="text-center text-xs text-white/40">
+  Tus cambios se guardan automáticamente
+</p>
   </div>
 </div>
               </div>
@@ -1156,7 +1411,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
       <div className="mx-auto max-w-7xl">
         <button
           onClick={onBack}
-          className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/70 transition hover:bg-white/10"
+          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
         >
           ← Volver a Menu Principal
         </button>
@@ -1267,7 +1522,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                                 onChange={(e) =>
                                   updateResult(match.id, 'homeScore', e.target.value)
                                 }
-                                className="h-14 w-16 rounded-2xl border border-white/10 bg-white/10 text-center text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="h-12 w-12 sm:h-14 sm:w-16 rounded-xl sm:rounded-2xl border border-white/10 bg-white/10 text-center text-lg sm:text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
                                 placeholder=""
                               />
                               <span className="text-lg font-semibold text-white/50">-</span>
@@ -1278,7 +1533,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
                                 onChange={(e) =>
                                   updateResult(match.id, 'awayScore', e.target.value)
                                 }
-                                className="h-14 w-16 rounded-2xl border border-white/10 bg-white/10 text-center text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="h-12 w-12 sm:h-14 sm:w-16 rounded-xl sm:rounded-2xl border border-white/10 bg-white/10 text-center text-lg sm:text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
                               />
                               <button
                                 onClick={() => saveOfficialResult(match.id)}
@@ -1421,8 +1676,14 @@ function PublicPicksScreen({
 }) {
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const canView = user?.role === 'admin' || new Date() >= PUBLIC_REVEAL_DATE
 
   useEffect(() => {
+  if (!canView) {
+    setLoading(false)
+    return
+  }
+
   const load = async () => {
     const { data, error } = await supabase
       .from('predictions')
@@ -1465,7 +1726,7 @@ function PublicPicksScreen({
   return () => {
     supabase.removeChannel(channel)
   }
-}, [])
+}, [canView])
 
   const groupedByMatch = useMemo(() => {
   const grouped: Record<string, any[]> = {}
@@ -1516,12 +1777,43 @@ const getResultStyle = (row: any, match: any) => {
   return 'bg-red-400/20 text-red-300'
 }
 
+if (!canView) {
+  return (
+    <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+      <div className="mx-auto max-w-7xl">
+        <button
+          onClick={onBack}
+          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+        >
+          ← Volver
+        </button>
+
+        <div className="relative overflow-hidden rounded-3xl border border-yellow-500/40 bg-black/95 p-8 shadow-[0_0_30px_rgba(234,179,8,0.15)] md:p-10">
+          <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/5" />
+          <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
+
+          <div className="relative z-10">
+            <h1 className="text-4xl font-extrabold tracking-tight text-yellow-400 md:text-6xl">
+              Todas las Quinielas
+            </h1>
+            <p className="mt-4 max-w-3xl text-lg text-white/80">
+              Consulta todas las Quinielas y ve lo que pusieron los participantes en cada partido.
+            </p>
+          </div>
+        </div>
+
+        <PublicRevealLockedCard />
+      </div>
+    </main>
+  )
+}
+
 return (
   <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
     <div className="mx-auto max-w-7xl">
       <button
         onClick={onBack}
-        className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 hover:bg-white/10"
+        className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
       >
         ← Volver
       </button>
@@ -1692,8 +1984,14 @@ function PublicPicksByParticipantScreen({
   const [rows, setRows] = useState<PublicEntryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const canView = user?.role === 'admin' || new Date() >= PUBLIC_REVEAL_DATE
 
   useEffect(() => {
+  if (!canView) {
+    setLoading(false)
+    return
+  }
+
   let mounted = true
 
   const load = async () => {
@@ -1763,7 +2061,7 @@ function PublicPicksByParticipantScreen({
     mounted = false
     supabase.removeChannel(channel)
   }
-}, [selectedUserId])
+}, [selectedUserId, canView])
 
   const participants = useMemo(() => {
     const map = new Map<
@@ -1798,12 +2096,41 @@ function PublicPicksByParticipantScreen({
   const selectedParticipant =
     participants.find((participant) => participant.user_id === selectedUserId) ?? null
 
+  if (!canView) {
+    return (
+      <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+        <div className="mx-auto max-w-7xl">
+          <button
+            onClick={onBack}
+            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+          >
+            ← Volver
+          </button>
+
+          <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 shadow-2xl md:p-8">
+            <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+              Vista pública
+            </p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-yellow-400 md:text-5xl">
+              Quinielas por participante
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-white/65 md:text-base">
+              Explora todas las quinielas agrupadas por participante.
+            </p>
+          </section>
+
+          <PublicRevealLockedCard />
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
       <div className="mx-auto max-w-7xl">
         <button
           onClick={onBack}
-          className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 transition hover:bg-white/10"
+          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
         >
           ← Volver
         </button>
@@ -2138,7 +2465,7 @@ function EntryDetailScreen({
         <div className="mx-auto max-w-7xl">
           <button
             onClick={onBack}
-            className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 hover:bg-white/10"
+            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
           >
             ← Volver
           </button>
@@ -2157,7 +2484,7 @@ function EntryDetailScreen({
         <div className="mx-auto max-w-7xl">
           <button
             onClick={onBack}
-            className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 hover:bg-white/10"
+            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
           >
             ← Volver
           </button>
@@ -2180,7 +2507,7 @@ function EntryDetailScreen({
       <div className="mx-auto max-w-7xl">
         <button
           onClick={onBack}
-          className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 transition hover:bg-white/10"
+          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
         >
           ← Volver
         </button>
@@ -2331,7 +2658,7 @@ const badgeDetail = !hasPrediction
                                 <div className="text-xs uppercase tracking-[0.2em] text-white/40">
                                   {match.homeCode}
                                 </div>
-                                <span className="text-2xl font-bold tracking-tight">
+                                <span className="text-lg sm:text-2xl font-bold tracking-tight">
                                   {match.homeTeam}
                                 </span>
                               </div>
@@ -2358,7 +2685,7 @@ const badgeDetail = !hasPrediction
                                 <div className="text-xs uppercase tracking-[0.2em] text-white/40">
                                   {match.awayCode}
                                 </div>
-                                <span className="text-2xl font-bold tracking-tight">
+                                <span className="text-lg sm:text-2xl font-bold tracking-tight">
                                   {match.awayTeam}
                                 </span>
                               </div>
@@ -2455,6 +2782,20 @@ const badgeDetail = !hasPrediction
 export default function Home() {
   const router = useRouter()
   const [user, setUser] = useState<UserState>(null)
+
+  const canViewPublic =
+    user?.role === 'admin' ||
+    new Date() >= PUBLIC_REVEAL_DATE
+
+  const [landingEmail, setLandingEmail] = useState('')
+const [landingPassword, setLandingPassword] = useState('')
+const [landingFirstName, setLandingFirstName] = useState('')
+const [landingLastName, setLandingLastName] = useState('')
+const [landingPhone, setLandingPhone] = useState('')
+const [landingLoading, setLandingLoading] = useState(false)
+const [landingMessage, setLandingMessage] = useState('')
+const [landingError, setLandingError] = useState('')
+const [landingIsRegister, setLandingIsRegister] = useState(false)
   const [view, setView] = useState<ViewMode>('dashboard')
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
   const [predictions, setPredictions] = useState<Record<string, Prediction>>({})
@@ -2478,6 +2819,98 @@ const [personalRank, setPersonalRank] = useState<PersonalRankInfo>({
 const [personalRankLoading, setPersonalRankLoading] = useState(false)
 const creatingDefaultEntryRef = useRef<string | null>(null)
 
+async function upsertLandingProfile(userId: string, userEmail: string) {
+  const cleanFirstName = landingFirstName.trim()
+  const cleanLastName = landingLastName.trim()
+  const cleanPhone = landingPhone.trim()
+
+  const { data: existingProfile, error: readError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (readError) throw readError
+
+  if (existingProfile) {
+    return
+  }
+
+  const resolvedFullName =
+    `${cleanFirstName} ${cleanLastName}`.trim() ||
+    userEmail.split('@')[0].replace(/[._-]+/g, ' ')
+
+  const { error } = await supabase.from('profiles').insert({
+    id: userId,
+    email: userEmail,
+    full_name: resolvedFullName,
+    first_name: cleanFirstName || null,
+    last_name: cleanLastName || null,
+    phone: cleanPhone || null,
+    role: 'player',
+  })
+
+  if (error) throw error
+}
+
+async function handleLandingAuth(e: React.FormEvent<HTMLFormElement>) {
+  e.preventDefault()
+
+  setLandingLoading(true)
+  setLandingMessage('')
+  setLandingError('')
+
+  try {
+    if (landingIsRegister) {
+      if (
+        !landingFirstName.trim() ||
+        !landingLastName.trim() ||
+        !landingPhone.trim()
+      ) {
+        setLandingError('Por favor ingresa nombres, apellidos y teléfono.')
+        setLandingLoading(false)
+        return
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: landingEmail,
+        password: landingPassword,
+      })
+
+      if (error) throw error
+
+      if (data.user) {
+        await upsertLandingProfile(data.user.id, data.user.email || landingEmail)
+      }
+
+      setLandingMessage('Cuenta creada. Ahora inicia sesión.')
+      setLandingIsRegister(false)
+      setLandingFirstName('')
+      setLandingLastName('')
+      setLandingPhone('')
+      setLandingPassword('')
+      return
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: landingEmail,
+      password: landingPassword,
+    })
+
+    if (error) throw error
+
+    // IMPORTANTE:
+    // En login NO actualizamos profiles, porque eso puede pisar los datos personales
+    // que el participante ya guardó previamente.
+    router.refresh()
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Ocurrió un error'
+    setLandingError(msg)
+  } finally {
+    setLandingLoading(false)
+  }
+}
+
 async function loadParticipantProfile(userId: string) {
   setParticipantProfileLoading(true)
 
@@ -2495,22 +2928,76 @@ async function loadParticipantProfile(userId: string) {
   }
 
  const profileData = (data as ParticipantProfileRow | null) ?? null
+ const storedProfile = getStoredProfile(userId)
 
-if (!profileData) {
+if (!profileData && !storedProfile) {
   setParticipantProfile(null)
   setParticipantProfileLoading(false)
   return
 }
 
-const fullNameParts = (profileData.full_name || '').trim().split(/\s+/).filter(Boolean)
-const inferredFirstName = profileData.first_name || fullNameParts.slice(0, -2).join(' ') || fullNameParts[0] || ''
-const inferredLastName = profileData.last_name || fullNameParts.slice(-2).join(' ') || ''
+let resolvedProfile = {
+  ...(profileData ?? {}),
+  ...(storedProfile ?? {}),
+  id: userId,
+} as ParticipantProfileRow
+
+const emailUserName = getEmailUserName(resolvedProfile.email)
+const storedFullName = storedProfile?.full_name?.trim?.() || ''
+const dbFullName = profileData?.full_name?.trim?.() || ''
+
+if (
+  storedProfile &&
+  storedFullName &&
+  (!dbFullName || dbFullName.toLowerCase() === emailUserName)
+) {
+  const { data: repairedProfile, error: repairError } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        id: userId,
+        email: storedProfile.email ?? resolvedProfile.email ?? null,
+        full_name: storedProfile.full_name ?? null,
+        first_name: storedProfile.first_name ?? null,
+        last_name: storedProfile.last_name ?? null,
+        phone: storedProfile.phone ?? null,
+        role: storedProfile.role ?? resolvedProfile.role ?? 'player',
+      },
+      { onConflict: 'id' }
+    )
+    .select('*')
+    .single()
+
+  if (!repairError && repairedProfile) {
+    resolvedProfile = repairedProfile as ParticipantProfileRow
+  }
+}
+
+const fullNameParts = (resolvedProfile.full_name || '').trim().split(/\s+/).filter(Boolean)
+const inferredFirstName =
+  resolvedProfile.first_name ||
+  (fullNameParts.length > 2 ? fullNameParts.slice(0, -2).join(' ') : fullNameParts[0]) ||
+  ''
+const inferredLastName =
+  resolvedProfile.last_name ||
+  (fullNameParts.length > 2 ? fullNameParts.slice(-2).join(' ') : fullNameParts.slice(1).join(' ')) ||
+  ''
+
+const resolvedFullName = resolveProfileFullName(
+  {
+    ...resolvedProfile,
+    first_name: inferredFirstName,
+    last_name: inferredLastName,
+  },
+  resolvedProfile.email
+)
 
 setParticipantProfile({
-  ...profileData,
+  ...resolvedProfile,
+  full_name: resolvedFullName,
   first_name: inferredFirstName,
   last_name: inferredLastName,
-  phone: profileData.phone || '',
+  phone: resolvedProfile.phone || '',
 })
 
 setParticipantProfileLoading(false)
@@ -2518,53 +3005,74 @@ setParticipantProfileLoading(false)
 async function saveParticipantProfile() {
   if (!user?.id) return
 
-  const fullName = `${participantFirstName} ${participantLastName}`.trim()
+  const cleanFirstName = participantFirstName.trim()
+  const cleanLastName = participantLastName.trim()
+  const cleanPhone = participantPhone.trim()
+  const fullName = `${cleanFirstName} ${cleanLastName}`.trim()
 
-  const updates = {
-    id: user.id,
-    full_name: fullName,
-  }
-
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(updates)
-
-  if (error) {
-    console.error('Error guardando perfil:', error.message)
-    alert('Error al guardar los datos')
+  if (!cleanFirstName || !cleanLastName) {
+    setSaveStatus('error')
+    alert('Ingresa nombres y apellidos antes de guardar.')
     return
   }
 
-  setParticipantProfile((prev) => ({
-    ...(prev ?? {
-      id: user.id,
-      email: user.email ?? '',
-      role: user.role,
-    }),
+  const nextProfile = {
+    id: user.id,
+    email: user.email ?? null,
     full_name: fullName,
-    first_name: participantFirstName,
-    last_name: participantLastName,
-    phone: participantPhone,
-  }) as ParticipantProfileRow)
+    first_name: cleanFirstName,
+    last_name: cleanLastName,
+    phone: cleanPhone || null,
+    role: user.role,
+  }
+
+  storeProfile(user.id, nextProfile)
+
+  const { data: savedProfile, error } = await supabase
+    .from('profiles')
+    .upsert(nextProfile, { onConflict: 'id' })
+    .select('*')
+    .single()
+
+  if (error) {
+    console.error('Error guardando perfil:', error.message)
+    setSaveStatus('error')
+    alert(`Error al guardar los datos: ${error.message}`)
+    return
+  }
+
+  const safeProfile = savedProfile as ParticipantProfileRow
+  const resolvedFullName = resolveProfileFullName(safeProfile, user.email) || fullName
+
+  setParticipantProfile({
+    ...safeProfile,
+    full_name: resolvedFullName,
+    first_name: safeProfile.first_name || cleanFirstName,
+    last_name: safeProfile.last_name || cleanLastName,
+    phone: safeProfile.phone || cleanPhone,
+  })
+
+  setParticipantFirstName(safeProfile.first_name || cleanFirstName)
+  setParticipantLastName(safeProfile.last_name || cleanLastName)
+  setParticipantPhone(safeProfile.phone || cleanPhone)
 
   setUser((prev) =>
-  prev
-    ? {
-        ...prev,
-        fullName,
-        email: prev.email,
-        role: prev.role,
-      }
-    : prev
-)
-
+    prev
+      ? {
+          ...prev,
+          fullName: resolvedFullName,
+          email: safeProfile.email ?? prev.email,
+          role: safeProfile.role === 'admin' ? 'admin' : prev.role,
+        }
+      : prev
+  )
 
   setIsEditingParticipantProfile(false)
   setSaveStatus('success')
 
-setTimeout(() => {
-  setSaveStatus('idle')
-}, 3000)
+  setTimeout(() => {
+    setSaveStatus('idle')
+  }, 3000)
 }
 async function loadPersonalRank(userId: string) {
   setPersonalRankLoading(true)
@@ -2716,11 +3224,48 @@ useEffect(() => {
       const resolvedEmail = (profile.email ?? authUser.email ?? '').toLowerCase()
 const isForcedAdmin = resolvedEmail === 'rcantoral@cantoralabogados.com'
 
+const storedProfile = getStoredProfile(profile.id)
+let resolvedProfile = {
+  ...profile,
+  ...(storedProfile ?? {}),
+}
+
+const emailUserName = getEmailUserName(resolvedProfile.email ?? authUser.email)
+const storedFullName = storedProfile?.full_name?.trim?.() || ''
+const currentFullName = profile.full_name?.trim?.() || ''
+
+if (
+  storedProfile &&
+  storedFullName &&
+  (!currentFullName || currentFullName.toLowerCase() === emailUserName)
+) {
+  const { data: repairedProfile, error: repairError } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        id: profile.id,
+        email: storedProfile.email ?? profile.email ?? authUser.email ?? null,
+        full_name: storedProfile.full_name ?? null,
+        first_name: storedProfile.first_name ?? null,
+        last_name: storedProfile.last_name ?? null,
+        phone: storedProfile.phone ?? null,
+        role: isForcedAdmin ? 'admin' : storedProfile.role ?? profile.role ?? 'player',
+      },
+      { onConflict: 'id' }
+    )
+    .select('*')
+    .single()
+
+  if (!repairError && repairedProfile) {
+    resolvedProfile = repairedProfile
+  }
+}
+
 setUser({
   id: profile.id,
-  email: profile.email ?? authUser.email ?? '',
-  fullName: profile.full_name ?? authUser.email ?? 'Jugador',
-  role: isForcedAdmin ? 'admin' : (profile.role ?? 'player'),
+  email: resolvedProfile.email ?? authUser.email ?? '',
+  fullName: resolveProfileFullName(resolvedProfile, authUser.email),
+  role: isForcedAdmin ? 'admin' : (resolvedProfile.role ?? 'player'),
 })
     }
 
@@ -2820,7 +3365,7 @@ creatingDefaultEntryRef.current = null
     setPredictions({})
     setActiveEntryId(null)
     setEntries([])
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   const handleCreateEntry = async () => {
@@ -2968,23 +3513,132 @@ creatingDefaultEntryRef.current = null
 }
   if (!user) {
   return (
-    <div
-      className="relative min-h-screen w-full overflow-hidden bg-black"
-      style={{
-        backgroundImage: "url('/landing-bg.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div className="absolute inset-0 bg-black/10" />
+    <main className="relative min-h-screen w-full overflow-hidden bg-black text-white">
+      <div className="absolute inset-0 z-0 flex items-start justify-center overflow-hidden">
+        <img
+          src="/landing-bg.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none w-full min-w-full select-none object-top md:h-full md:w-auto md:min-w-0 md:max-w-none md:object-contain"
+        />
+      </div>
 
-      <button
-  onClick={() => router.push('/login')}
-  className="absolute left-1/2 top-[64%] z-20 h-[100px] w-[438px] -translate-x-1/2 rounded-[24px] bg-transparent text-transparent"
->
-  Ir a login
-</button>
-    </div>
+      <div className="absolute inset-0 z-10 bg-black/25" />
+      <div className="absolute inset-x-0 bottom-0 z-10 h-[46vh] bg-gradient-to-t from-black via-black/85 to-transparent" />
+
+<section className="relative z-20 flex min-h-screen w-full flex-col items-center justify-end px-6 pb-20 text-center md:px-16 md:pb-0">
+        <div className="w-full max-w-3xl md:translate-y-[8px]">
+          <p className="mx-auto mb-4 w-full max-w-[360px] bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 bg-clip-text text-base font-bold leading-relaxed text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] sm:max-w-xl sm:text-lg md:max-w-2xl md:text-xl md:leading-snug">
+            Tu pasión. Tus números. Tu suerte. <br />
+            Vive la emoción del fútbol como nunca antes, con nuestra ya tradicional quiniela.
+          </p>
+
+          <form
+            onSubmit={handleLandingAuth}
+            className="mx-auto w-full max-w-md rounded-2xl border border-yellow-400/20 bg-black/70 p-6 shadow-2xl backdrop-blur-xl md:max-w-[430px] md:p-5"
+          >
+            <h2 className="mb-2 text-xl font-bold text-white md:text-2xl">
+              {landingIsRegister ? 'Crear cuenta' : 'Iniciar sesión'}
+            </h2>
+
+            <p className="mb-6 text-sm text-white/60 md:mb-4">
+              {landingIsRegister
+                ? 'Registra tu usuario con tus datos'
+                : 'Entra con tu correo y contraseña'}
+            </p>
+
+            {landingIsRegister && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Nombres"
+                  value={landingFirstName}
+                  onChange={(e) => setLandingFirstName(e.target.value)}
+                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Apellidos"
+                  value={landingLastName}
+                  onChange={(e) => setLandingLastName(e.target.value)}
+                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                />
+
+                <input
+                  type="tel"
+                  placeholder="Teléfono"
+                  value={landingPhone}
+                  onChange={(e) => setLandingPhone(e.target.value)}
+                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                />
+              </>
+            )}
+
+            <input
+              type="email"
+              placeholder="tu@email.com"
+              value={landingEmail}
+              onChange={(e) => setLandingEmail(e.target.value)}
+              required
+              className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+            />
+
+            <input
+              type="password"
+              placeholder="Contraseña"
+              value={landingPassword}
+              onChange={(e) => setLandingPassword(e.target.value)}
+              required
+              className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+            />
+
+            <button
+              type="submit"
+              disabled={landingLoading}
+              className="w-full rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 py-3 font-bold text-black shadow-[0_0_25px_rgba(250,204,21,0.25)] transition hover:scale-[1.02] disabled:opacity-50"
+            >
+              {landingLoading
+                ? landingIsRegister
+                  ? 'Creando cuenta...'
+                  : 'Entrando...'
+                : landingIsRegister
+                  ? 'Crear cuenta'
+                  : 'Entrar'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLandingIsRegister(!landingIsRegister)
+                setLandingError('')
+                setLandingMessage('')
+                setLandingFirstName('')
+                setLandingLastName('')
+                setLandingPhone('')
+              }}
+              className="mt-4 w-full text-sm text-white/60 hover:text-white"
+            >
+              {landingIsRegister
+                ? 'Ya tengo cuenta, quiero iniciar sesión'
+                : 'No tengo cuenta, quiero registrarme'}
+            </button>
+
+            {landingMessage && (
+              <p className="mt-4 text-center text-sm text-emerald-300">
+                {landingMessage}
+              </p>
+            )}
+
+            {landingError && (
+              <p className="mt-4 text-center text-sm text-red-300">
+                {landingError}
+              </p>
+            )}
+          </form>
+        </div>
+      </section>
+    </main>
   )
 }
 
@@ -3032,7 +3686,7 @@ if (view === 'entry-detail') {
         <div className="mx-auto max-w-5xl">
           <button
             onClick={() => setView('public-by-participant')}
-            className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 hover:bg-white/10"
+            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
           >
             ← Volver
           </button>
@@ -3062,7 +3716,7 @@ if (view === 'participant-data') {
       <div className="mx-auto max-w-6xl">
         <button
           onClick={() => setView('dashboard')}
-          className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70 transition hover:bg-white/10"
+          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
         >
           ← Volver
         </button>
@@ -3123,11 +3777,6 @@ if (view === 'participant-data') {
   <h2 className="text-xl font-bold text-yellow-400">
     Información personal
   </h2>
-  {saveStatus === 'success' && (
-  <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200">
-    Datos guardados correctamente ✅
-  </div>
-)}
 
 {saveStatus === 'error' && (
   <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">
@@ -3228,143 +3877,210 @@ if (view === 'participant-data') {
 }
 
 if (view === 'admin') {
+  if (user?.role !== 'admin') {
+    return (
+      <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+        <div className="mx-auto max-w-5xl">
+          <button
+            onClick={() => setView('dashboard')}
+            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+          >
+            ← Volver
+          </button>
+
+          <div className="rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+            <p className="text-lg font-semibold text-white">
+              No tienes acceso a esta sección.
+            </p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return <AdminScreen onBack={() => setView('dashboard')} />
 }
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={handleLogout}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10"
-          >
-            Cerrar sesión
-          </button>
-        </div>
+        <header className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.04] to-yellow-400/[0.04] p-4 shadow-2xl sm:p-5 md:p-6">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-2xl shadow-[0_0_25px_rgba(250,204,21,0.16)]">
+                ⚽
+              </div>
 
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 shadow-2xl md:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] items-center">
-            <div>
-              <div
-  className="relative min-h-[420px] overflow-hidden rounded-3xl border border-white/10 bg-cover bg-center"
-  style={{
-  backgroundImage: "url('/messi.jpg')",
-  backgroundSize: '110%',
-  backgroundPosition: 'center',
-}}
->
-  <div className="relative z-10 h-full p-8 md:p-10">
-    <div>
-      <h2 className="absolute right-20 top-[250%] -translate-y-1/2 text-3xl md:text-5xl font-bold tracking-tight text-yellow-400">
-  Súper Quiniela 2026
-</h2>
-    </div>
-
-    <div>
-    </div>
-  </div>
-</div>
-              
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-yellow-300/70">
+                  Súper Quiniela 2026
+                </p>
+                <h1 className="truncate text-lg font-extrabold tracking-tight text-white sm:text-xl md:text-2xl">
+                  Hola, {user.fullName ?? 'Usuario'}
+                </h1>
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 w-full max-w-sm">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-                Usuario actual
-              </p>
-              <p className="mt-2 text-sm font-semibold text-white">
-                {user.fullName ?? 'Usuario'}
-              </p>
-              <p className="mt-1 text-xs text-white/55">{user.email ?? ''}</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/45">
-                Rol: {user.role}
-              </p>
+            <button
+              onClick={handleLogout}
+              className="w-full rounded-2xl border border-red-400/20 bg-red-400/10 px-6 py-3 text-base font-semibold text-red-200 shadow-lg transition hover:bg-red-400/20 active:scale-[0.98] sm:w-auto"
+            >
+              🚪 Cerrar sesión
+            </button>
+          </div>
 
-              <div className="mt-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45 mb-2">
-                  Quiniela activa
+          <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-stretch">
+            <div
+              className="relative min-h-[230px] overflow-hidden rounded-3xl border border-white/10 bg-cover bg-center shadow-xl sm:min-h-[280px] md:min-h-[420px]"
+              style={{
+                backgroundImage: "url('/messi.jpg')",
+                backgroundPosition: 'center',
+              }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
+              <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
+
+              <div className="relative z-10 flex h-full min-h-[230px] flex-col justify-end p-6 sm:min-h-[280px] md:min-h-[420px] md:p-10">
+                <p className="mb-3 inline-flex w-fit rounded-full border border-yellow-400/25 bg-yellow-400/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-yellow-200">
+                  Mundial 2026
                 </p>
 
-                <select
-                  value={activeEntryId ?? ''}
-                  onChange={(e) => handleChangeActiveEntry(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none"
-                >
-                  {entries.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
+                <h2 className="text-3xl font-black tracking-tight text-yellow-400 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] sm:text-4xl md:text-6xl">
+                  Súper Quiniela 2026
+                </h2>
 
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 md:text-base">
+                  Administra tus quinielas, revisa rankings y vive el torneo con toda la intensidad.
+                </p>
+              </div>
+            </div>
+
+            <aside className="flex h-full flex-col justify-between rounded-3xl border border-white/10 bg-black/35 p-5 shadow-xl backdrop-blur">
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                      Usuario actual
+                    </p>
+                    <p className="mt-2 truncate text-base font-bold text-white">
+                      {user.fullName ?? 'Usuario'}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-white/55">{user.email ?? ''}</p>
+                  </div>
+
+                  <span className="shrink-0 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-yellow-200">
+                    {user.role}
+                  </span>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                  <p className="mb-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
+                    Quiniela activa
+                  </p>
+
+                  <select
+                    value={activeEntryId ?? ''}
+                    onChange={(e) => handleChangeActiveEntry(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-sm font-semibold text-white outline-none transition focus:border-yellow-400/40"
+                  >
+                    {entries.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3">
                 <button
                   onClick={handleCreateEntry}
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
+                  className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-3 text-sm font-bold text-yellow-100 transition hover:bg-yellow-400/15 active:scale-[0.99]"
                 >
                   + Nueva quiniela
                 </button>
+
                 <button
-  onClick={handleDeleteActiveEntry}
-  disabled={entries.length <= 1}
-  className={`mt-3 w-full rounded-xl border px-3 py-2 text-sm transition ${
-    entries.length <= 1
-      ? 'cursor-not-allowed border-white/10 bg-white/5 text-white/35'
-      : 'border-red-400/20 bg-red-400/10 text-red-200 hover:bg-red-400/15'
-  }`}
->
-  🗑 Borrar quiniela activa
-</button>
+                  onClick={handleDeleteActiveEntry}
+                  disabled={entries.length <= 1}
+                  className={`w-full rounded-2xl border px-4 py-3 text-sm font-bold transition active:scale-[0.99] ${
+                    entries.length <= 1
+                      ? 'cursor-not-allowed border-white/10 bg-white/5 text-white/35'
+                      : 'border-red-400/20 bg-red-400/10 text-red-200 hover:bg-red-400/15'
+                  }`}
+                >
+                  🗑 Borrar quiniela activa
+                </button>
               </div>
-            </div>
+            </aside>
           </div>
-        </div>
+        </header>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-2">
-  <div className="flex flex-col gap-4">
-    <DashboardCard
-      title="Mi Quiniela"
-      description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
-      badge="Jugador"
-      onClick={() => setView('picks')}
-    />
+        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
+          {user.role === 'admin' && (
+            <div className="order-1 md:order-7 md:col-span-2">
+              <DashboardCard
+                title="Panel de Administración"
+                description="Solo para administradores"
+                badge="Admin"
+                onClick={() => setView('admin')}
+              />
+            </div>
+          )}
 
-    <DashboardCard
-      title="Ver todas las Quinielas por partido"
-      description="Aqui podras ver lo que puso cada quien en su quiniela."
-      badge="Público"
-      onClick={() => setView('public')}
-    />
+          <div className={`${user.role === 'admin' ? 'order-7' : 'order-1'} md:order-1 md:contents`}>
+            <DashboardCard
+              title="Reglamento Oficial"
+              description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
+              badge="Info"
+              onClick={() => router.push('/rules')}
+            />
+          </div>
 
-    <DashboardCard
-      title="Ver todas las Quinielas por participante"
-      description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
-      badge="Público"
-      onClick={() => setView('public-by-participant')}
-    />
-  </div>
+          <div className={`${user.role === 'admin' ? 'order-3' : 'order-3'} md:order-2 md:contents`}>
+            <DashboardCard
+              title="Tabla general"
+              description="Consulta posiciones, puntos acumulados y aciertos que cada Quiniela y participante."
+              badge="Ranking"
+              onClick={() => setView('leaderboard')}
+            />
+          </div>
 
-  <div className="flex flex-col gap-4">
-    <DashboardCard
-      title="Tabla general"
-      description="Consulta posiciones, puntos acumulados y aciertos que cada Quiniela y participante."
-      badge="Ranking"
-      onClick={() => setView('leaderboard')}
-    />
+          <div className={`${user.role === 'admin' ? 'order-2' : 'order-2'} md:order-3 md:contents`}>
+            <DashboardCard
+              title="Mi Quiniela"
+              description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
+              badge="Jugador"
+              onClick={() => setView('picks')}
+            />
+          </div>
 
-    <DashboardCard
-      title="Datos del Participante"
-      description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
-      badge="Perfil"
-      onClick={() => setView('participant-data')}
-    />
+          <div className={`${user.role === 'admin' ? 'order-6' : 'order-6'} md:order-4 md:contents`}>
+            <DashboardCard
+              title="Datos del Participante"
+              description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
+              badge="Perfil"
+              onClick={() => setView('participant-data')}
+            />
+          </div>
 
-    <DashboardCard
-      title="Panel de Administración"
-      description="Solo para administradores, no seas chismoso!"
-      badge="Admin"
-      onClick={() => setView('admin')}
-    />
-  </div>
-</section>
+          <div className={`${user.role === 'admin' ? 'order-4' : 'order-4'} md:order-5 md:contents`}>
+            <DashboardCard
+              title="Ver todas las Quinielas por partido"
+              description="Aqui podras ver lo que puso cada quien en su quiniela."
+              badge="Público"
+              onClick={() => setView('public')}
+            />
+          </div>
+
+          <div className={`${user.role === 'admin' ? 'order-5' : 'order-5'} md:order-6 md:contents`}>
+            <DashboardCard
+              title="Ver todas las Quinielas por participante"
+              description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
+              badge="Público"
+              onClick={() => setView('public-by-participant')}
+            />
+          </div>
+        </section>
       </div>
     </main>
   )
