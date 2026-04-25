@@ -2373,6 +2373,7 @@ function PublicPicksScreen({
   user: UserState
 }) {
   const [rows, setRows] = useState<any[]>([])
+  const [openMatchId, setOpenMatchId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [publicMatchMeta, setPublicMatchMeta] = useState<Record<string, PublicMatchMetaRow>>({})
   const canView = user?.role === 'admin' || new Date() >= PUBLIC_REVEAL_DATE
@@ -2563,7 +2564,7 @@ if (!canView) {
               Todas las Quinielas
             </h1>
             <p className="mt-4 max-w-3xl text-lg text-white/80">
-              Consulta todas las Quinielas y ve lo que pusieron los participantes en cada partido.
+              Da clic en el partido que desees visualizar para que se abran los resultados que pusieron todos los participantes.
             </p>
           </div>
         </div>
@@ -2595,7 +2596,7 @@ return (
             </h1>
 
             <p className="mt-4 max-w-3xl text-base leading-7 text-white/80 md:text-lg">
-              Consulta todas las Quinielas y ve lo que pusieron los participantes en cada partido.
+              Da clic en el partido que desees visualizar para que se abran los resultados que pusieron todos los participantes.
             </p>
           </div>
 
@@ -2624,11 +2625,17 @@ return (
                 home_score: matchMeta?.home_score ?? null,
                 away_score: matchMeta?.away_score ?? null,
               }
+              const isOpen = openMatchId === matchId
 
               return (
   <section
     key={matchId}
-    className="w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl sm:p-5 md:p-6"
+    onClick={() => setOpenMatchId(isOpen ? null : matchId)}
+    className={`w-full cursor-pointer overflow-hidden rounded-3xl border p-4 shadow-xl transition hover:border-yellow-400/30 hover:bg-white/[0.07] sm:p-5 md:p-6 ${
+      isOpen
+        ? 'border-yellow-400/30 bg-yellow-400/10 shadow-[0_0_30px_rgba(250,204,21,0.10)]'
+        : 'border-white/10 bg-white/5'
+    }`}
   >
     <div className="mb-8">
   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2636,15 +2643,21 @@ return (
       {match?.kickoff}
     </p>
 
-    <span
-      className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-        matchFinished
-          ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-          : 'border-yellow-400/20 bg-yellow-400/10 text-yellow-200'
-      }`}
-    >
-      {matchFinished ? 'Jugado' : 'Por jugarse'}
-    </span>
+    <div className="flex items-center gap-2">
+      <span
+        className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+          matchFinished
+            ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
+            : 'border-yellow-400/20 bg-yellow-400/10 text-yellow-200'
+        }`}
+      >
+        {matchFinished ? 'Jugado' : 'Por jugarse'}
+      </span>
+
+      <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300">
+        {isOpen ? 'Ocultar ▲' : 'Ver picks ▼'}
+      </span>
+    </div>
   </div>
 
   <div className="mt-6 grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] items-center gap-2 sm:gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-10">
@@ -2698,7 +2711,11 @@ return (
   </div>
 </div>
 
-    <div className="w-full overflow-hidden rounded-2xl border border-white/10">
+    {isOpen && (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="mt-6 w-full cursor-default overflow-hidden rounded-2xl border border-white/10"
+    >
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)_70px] border-b border-yellow-500/20 bg-yellow-500/5 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-yellow-400 sm:px-4 sm:text-xs md:grid-cols-[1.5fr_1fr_120px] md:py-4 md:text-sm">
         <div>Jugador</div>
         <div>Quiniela</div>
@@ -2739,6 +2756,7 @@ return (
   )
 })}
     </div>
+    )}
   </section>
 )
 })}
