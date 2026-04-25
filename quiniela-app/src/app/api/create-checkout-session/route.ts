@@ -6,8 +6,8 @@ export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-    console.log('STRIPE_SECRET_KEY prefix:', stripeSecretKey?.slice(0, 7))
+    const stripeSecretKey = process.env.APP_STRIPE_SECRET_KEY
+console.log('APP_STRIPE_SECRET_KEY prefix:', stripeSecretKey?.slice(0, 7))
 
     if (!stripeSecretKey) {
       return NextResponse.json(
