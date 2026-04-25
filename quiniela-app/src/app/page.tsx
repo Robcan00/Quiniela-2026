@@ -170,6 +170,14 @@ function getEmailUserName(email?: string | null) {
   return email?.split('@')[0]?.trim().toLowerCase() || ''
 }
 
+function normalizeSearchText(value?: string | null) {
+  return (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
 function resolveProfileFullName(profile: any, fallbackEmail?: string | null) {
   const fullName = profile?.full_name?.trim?.() || ''
   const firstName = profile?.first_name?.trim?.() || ''
@@ -2752,6 +2760,7 @@ function PublicPicksByParticipantScreen({
   const [rows, setRows] = useState<PublicEntryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [participantSearch, setParticipantSearch] = useState('')
   const canView = user?.role === 'admin' || new Date() >= PUBLIC_REVEAL_DATE
 
   useScrollToPageTop([])
@@ -2860,10 +2869,32 @@ function PublicPicksByParticipantScreen({
     )
   }, [rows])
 
+  const filteredParticipants = useMemo(() => {
+    const query = normalizeSearchText(participantSearch)
+
+    if (!query) return participants
+
+    return participants.filter((participant) => {
+      const participantName = normalizeSearchText(participant.full_name)
+      const entryNames = participant.entries
+        .map((entry) => normalizeSearchText(entry.name))
+        .join(' ')
+
+      return participantName.includes(query) || entryNames.includes(query)
+    })
+  }, [participants, participantSearch])
+
   const selectedParticipant =
     participants.find((participant) => participant.user_id === selectedUserId) ?? null
 
-  const desktopSelectedParticipant = selectedParticipant ?? participants[0] ?? null
+  const selectedParticipantInFiltered =
+    selectedParticipant &&
+    filteredParticipants.some((participant) => participant.user_id === selectedParticipant.user_id)
+      ? selectedParticipant
+      : null
+
+  const desktopSelectedParticipant =
+    selectedParticipantInFiltered ?? filteredParticipants[0] ?? null
 
   if (!canView) {
     return (
@@ -2940,6 +2971,44 @@ function PublicPicksByParticipantScreen({
           </div>
         </section>
 
+        {canView && !loading && participants.length > 0 && (
+          <section className="mt-6 rounded-3xl border border-yellow-400/20 bg-yellow-400/10 p-4 shadow-xl md:p-5">
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-300/80">
+              Buscar participante
+            </label>
+
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                type="text"
+                value={participantSearch}
+                onChange={(e) => {
+                  setParticipantSearch(e.target.value)
+                  setSelectedUserId(null)
+                }}
+                placeholder="Buscar por nombre, apellido o nombre de quiniela..."
+                className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-400/50 focus:bg-black/55"
+              />
+
+              {participantSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setParticipantSearch('')
+                    setSelectedUserId(null)
+                  }}
+                  className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+
+            <p className="mt-3 text-xs font-semibold text-white/55">
+              {filteredParticipants.length} de {participants.length} participante{participants.length === 1 ? '' : 's'}
+            </p>
+          </section>
+        )}
+
         {loading ? (
           <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-white/70">
             Cargando participantes...
@@ -2955,6 +3024,18 @@ function PublicPicksByParticipantScreen({
           </div>
         ) : (
           <>
+          {filteredParticipants.length === 0 && (
+            <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+              <p className="text-lg font-bold text-red-100">
+                No encontramos participantes con esa búsqueda.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-red-100/75">
+                Intenta buscar por nombre, apellido o nombre de quiniela.
+              </p>
+            </div>
+          )}
+
+          {filteredParticipants.length > 0 && (
           <section className="mt-8 lg:hidden">
             {!selectedParticipant ? (
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
@@ -2964,12 +3045,12 @@ function PublicPicksByParticipantScreen({
                   </h2>
 
                   <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                    {participants.length}
+                    {filteredParticipants.length}
                   </span>
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  {participants.map((participant) => {
+                  {filteredParticipants.map((participant) => {
                     const isMe = participant.email && participant.email === user?.email
 
                     return (
@@ -3045,7 +3126,9 @@ function PublicPicksByParticipantScreen({
               </div>
             )}
           </section>
+          )}
 
+          {filteredParticipants.length > 0 && (
           <section className="mt-8 hidden gap-6 lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
               <div className="flex items-center justify-between gap-3">
@@ -3054,13 +3137,13 @@ function PublicPicksByParticipantScreen({
                 </h2>
 
                 <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                  {participants.length}
+                  {filteredParticipants.length}
                 </span>
               </div>
 
               <div className="mt-5 space-y-3">
-                {participants.map((participant) => {
-                  const isSelected = participant.user_id === selectedUserId
+                {filteredParticipants.map((participant) => {
+                  const isSelected = participant.user_id === (selectedUserId ?? desktopSelectedParticipant?.user_id)
                   const isMe = participant.email && participant.email === user?.email
 
                   return (
@@ -3135,6 +3218,7 @@ function PublicPicksByParticipantScreen({
               </div>
             </div>
           </section>
+          )}
           </>
         )}
       </div>
