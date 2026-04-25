@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
       mode: 'payment',
       line_items: [
         {
-          price: 'price_1TPqaxDolhX3q8oN6irKnhjz',
+          price: 'price_1TPrVEDoIhX3q8oNDhIB2NTc',
           quantity: 1,
         },
       ],
