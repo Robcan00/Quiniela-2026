@@ -388,7 +388,7 @@ export default function RulesPage() {
                   <div>2 quinielas</div>
                   <div className="font-bold">$5,000.00 MXN</div>
                   <div>3 quinielas</div>
-                  <div className="font-bold">$10,800.00 MXN</div>
+                  <div className="font-bold">$7,500.00 MXN</div>
                   <div>Y así sucesivamente</div>
                   <div className="font-bold">Pago proporcional</div>
                 </div>

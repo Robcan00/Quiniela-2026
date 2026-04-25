@@ -3761,6 +3761,35 @@ async function handleLandingAuth(e: React.FormEvent<HTMLFormElement>) {
   }
 }
 
+
+async function handleForgotPassword() {
+  const email = landingEmail.trim()
+
+  setLandingMessage('')
+  setLandingError('')
+
+  if (!email) {
+    setLandingError('Escribe tu correo primero para recuperar tu contraseña.')
+    return
+  }
+
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/update-password`
+      : 'https://www.superquiniela2026.com/update-password'
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  })
+
+  if (error) {
+    setLandingError(error.message)
+    return
+  }
+
+  setLandingMessage('Te mandamos un correo para restablecer tu contraseña.')
+}
+
 async function loadParticipantProfile(userId: string) {
   setParticipantProfileLoading(true)
 
@@ -4506,6 +4535,16 @@ creatingDefaultEntryRef.current = null
                   ? 'Crear cuenta'
                   : 'Entrar'}
             </button>
+
+            {!landingIsRegister && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="mt-3 w-full text-sm font-semibold text-yellow-300 transition hover:text-yellow-200"
+              >
+                Olvidé mi contraseña
+              </button>
+            )}
 
             <button
               type="button"
