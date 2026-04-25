@@ -951,18 +951,16 @@ const isGlobalLock = new Date() >= globalDeadline
   setSaving(true)
 
   try {
-    const rows = Object.entries(predictions)
-      .filter(([, p]) => p.homeScore !== '' && p.awayScore !== '')
-      .map(([matchId, p]) => ({
-        entry_id: activeEntryId,
-        match_id: matchId,
-        home_score_predicted: Number(p.homeScore),
-        away_score_predicted: Number(p.awayScore),
-        is_auto_zero: false,
-      }))
+    const rows = Object.entries(predictions).map(([matchId, p]) => ({
+      entry_id: activeEntryId,
+      match_id: matchId,
+      home_score_predicted: p.homeScore === '' ? null : Number(p.homeScore),
+      away_score_predicted: p.awayScore === '' ? null : Number(p.awayScore),
+      is_auto_zero: false,
+    }))
 
     if (rows.length === 0) {
-      setSaveError('No hay pronósticos para guardar.')
+      setSaveError('No hay cambios para guardar.')
       setSaving(false)
       return
     }
@@ -996,15 +994,13 @@ const handleAutoSave = async () => {
     setAutoSaving(true)
     setSaveError('')
 
-    const rows = Object.entries(predictions)
-      .filter(([, p]) => p.homeScore !== '' && p.awayScore !== '')
-      .map(([matchId, p]) => ({
-        entry_id: activeEntryId,
-        match_id: matchId,
-        home_score_predicted: Number(p.homeScore),
-        away_score_predicted: Number(p.awayScore),
-        is_auto_zero: false,
-      }))
+    const rows = Object.entries(predictions).map(([matchId, p]) => ({
+      entry_id: activeEntryId,
+      match_id: matchId,
+      home_score_predicted: p.homeScore === '' ? null : Number(p.homeScore),
+      away_score_predicted: p.awayScore === '' ? null : Number(p.awayScore),
+      is_auto_zero: false,
+    }))
 
     if (rows.length === 0) return
 
@@ -1031,14 +1027,10 @@ const handleAutoSave = async () => {
   }
 }
 
+
 useEffect(() => {
   if (!activeEntryId || isGlobalLock || !didUserEditRef.current) return
 
-  const hasAnyCompletePrediction = Object.values(predictions).some(
-    (prediction) => prediction.homeScore !== '' && prediction.awayScore !== ''
-  )
-
-  if (!hasAnyCompletePrediction) return
 
   if (autoSaveTimeout.current) {
     clearTimeout(autoSaveTimeout.current)
@@ -1644,35 +1636,29 @@ useEffect(() => {
   const saveOfficialResult = async (matchId: string) => {
     const current = results[matchId]
 
-    const saveOfficialResult = async (matchId: string) => {
-  const current = results[matchId]
+    setSavingId(matchId)
 
-  setSavingId(matchId)
+    const homeScore = current?.homeScore === '' ? null : Number(current?.homeScore)
+    const awayScore = current?.awayScore === '' ? null : Number(current?.awayScore)
+    const isFinished = homeScore !== null && awayScore !== null
 
-  const homeScore =
-    current?.homeScore === '' ? null : Number(current?.homeScore)
+    const { error } = await supabase
+      .from('matches')
+      .update({
+        home_score: homeScore,
+        away_score: awayScore,
+        is_finished: isFinished,
+        is_open: !isFinished,
+      })
+      .eq('id', matchId)
 
-  const awayScore =
-    current?.awayScore === '' ? null : Number(current?.awayScore)
+    setSavingId(null)
 
-  const isFinished =
-    homeScore !== null && awayScore !== null
+    if (error) {
+      alert(`Error al guardar resultado oficial: ${error.message}`)
+      return
+    }
 
-  const { error } = await supabase
-    .from('matches')
-    .update({
-      home_score: homeScore,
-      away_score: awayScore,
-      is_finished: isFinished,
-      is_open: !isFinished,
-    })
-    .eq('id', matchId)
-
-  setSavingId(null)
-
-  if (error) {
-    alert(`Error al guardar resultado oficial: ${error.message}`)
-  } else {
     setMatchStates((prev) => ({
       ...prev,
       [matchId]: {
@@ -1681,37 +1667,9 @@ useEffect(() => {
       },
     }))
 
-    alert('Resultado actualizado ✅')
+    alert(isFinished ? 'Resultado oficial guardado ✅' : 'Resultado oficial borrado ✅')
   }
-}
 
-    setSavingId(matchId)
-
-    const { error } = await supabase
-      .from('matches')
-      .update({
-        home_score: Number(current.homeScore),
-        away_score: Number(current.awayScore),
-        is_finished: true,
-        is_open: false,
-      })
-      .eq('id', matchId)
-
-    setSavingId(null)
-
-    if (error) {
-      alert(`Error al guardar resultado oficial: ${error.message}`)
-    } else {
-      setMatchStates((prev) => ({
-        ...prev,
-        [matchId]: {
-          isOpen: false,
-          isFinished: true,
-        },
-      }))
-      alert('Resultado oficial guardado ✅')
-    }
-  }
 
   const handleDeleteUser = async (targetUser: AdminUserRow) => {
     const label = targetUser.full_name || targetUser.email || 'este participante'
