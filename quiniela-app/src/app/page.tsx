@@ -960,8 +960,7 @@ const isGlobalLock = new Date() >= globalDeadline
     }))
 
     if (rows.length === 0) {
-      setSaveError('No hay cambios para guardar.')
-      setSaving(false)
+      setSaveMessage('No hay cambios para guardar.')
       return
     }
 
@@ -1027,10 +1026,8 @@ const handleAutoSave = async () => {
   }
 }
 
-
 useEffect(() => {
   if (!activeEntryId || isGlobalLock || !didUserEditRef.current) return
-
 
   if (autoSaveTimeout.current) {
     clearTimeout(autoSaveTimeout.current)
@@ -1638,17 +1635,25 @@ useEffect(() => {
 
     setSavingId(matchId)
 
-    const homeScore = current?.homeScore === '' ? null : Number(current?.homeScore)
-    const awayScore = current?.awayScore === '' ? null : Number(current?.awayScore)
-    const isFinished = homeScore !== null && awayScore !== null
+    const homeScore =
+      current?.homeScore === '' || current?.homeScore == null
+        ? null
+        : Number(current.homeScore)
+
+    const awayScore =
+      current?.awayScore === '' || current?.awayScore == null
+        ? null
+        : Number(current.awayScore)
+
+    const hasFullResult = homeScore !== null && awayScore !== null
 
     const { error } = await supabase
       .from('matches')
       .update({
         home_score: homeScore,
         away_score: awayScore,
-        is_finished: isFinished,
-        is_open: !isFinished,
+        is_finished: hasFullResult,
+        is_open: !hasFullResult,
       })
       .eq('id', matchId)
 
@@ -1662,14 +1667,13 @@ useEffect(() => {
     setMatchStates((prev) => ({
       ...prev,
       [matchId]: {
-        isOpen: !isFinished,
-        isFinished,
+        isOpen: !hasFullResult,
+        isFinished: hasFullResult,
       },
     }))
 
-    alert(isFinished ? 'Resultado oficial guardado ✅' : 'Resultado oficial borrado ✅')
+    alert(hasFullResult ? 'Resultado oficial guardado ✅' : 'Resultado borrado y partido reabierto ✅')
   }
-
 
   const handleDeleteUser = async (targetUser: AdminUserRow) => {
     const label = targetUser.full_name || targetUser.email || 'este participante'
