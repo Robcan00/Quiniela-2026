@@ -80,6 +80,27 @@ export default function UpdatePasswordPage() {
     }
   }
 
+  useEffect(() => {
+  const handleRecoverySession = async () => {
+    const hash = window.location.hash
+
+    if (!hash) return
+
+    const params = new URLSearchParams(hash.replace('#', ''))
+    const access_token = params.get('access_token')
+    const refresh_token = params.get('refresh_token')
+
+    if (access_token && refresh_token) {
+      await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      })
+    }
+  }
+
+  handleRecoverySession()
+}, [])
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-6 py-10 text-white">
       <div className="w-full max-w-md rounded-3xl border border-yellow-400/20 bg-white/5 p-6 shadow-2xl backdrop-blur md:p-8">
