@@ -939,6 +939,52 @@ const isGlobalLock = new Date() >= globalDeadline
     }))
   }
 
+  const persistPredictions = async () => {
+    if (!activeEntryId) {
+      return { errorMessage: 'No hay una quiniela activa.', changed: false }
+    }
+
+    const entries = Object.entries(predictions)
+
+    const rowsToDelete = entries
+      .filter(([, p]) => p.homeScore === '' && p.awayScore === '')
+      .map(([matchId]) => matchId)
+
+    const rowsToUpsert = entries
+      .filter(([, p]) => !(p.homeScore === '' && p.awayScore === ''))
+      .map(([matchId, p]) => ({
+        entry_id: activeEntryId,
+        match_id: matchId,
+        home_score_predicted: p.homeScore === '' ? null : Number(p.homeScore),
+        away_score_predicted: p.awayScore === '' ? null : Number(p.awayScore),
+        is_auto_zero: false,
+      }))
+
+    if (rowsToDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('predictions')
+        .delete()
+        .eq('entry_id', activeEntryId)
+        .in('match_id', rowsToDelete)
+
+      if (deleteError) {
+        return { errorMessage: deleteError.message, changed: false }
+      }
+    }
+
+    if (rowsToUpsert.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('predictions')
+        .upsert(rowsToUpsert, { onConflict: 'entry_id,match_id' })
+
+      if (upsertError) {
+        return { errorMessage: upsertError.message, changed: false }
+      }
+    }
+
+    return { errorMessage: '', changed: rowsToDelete.length > 0 || rowsToUpsert.length > 0 }
+  }
+
   const handleSave = async () => {
   setSaveMessage('')
   setSaveError('')
@@ -951,30 +997,15 @@ const isGlobalLock = new Date() >= globalDeadline
   setSaving(true)
 
   try {
-    const rows = Object.entries(predictions).map(([matchId, p]) => ({
-      entry_id: activeEntryId,
-      match_id: matchId,
-      home_score_predicted: p.homeScore === '' ? null : Number(p.homeScore),
-      away_score_predicted: p.awayScore === '' ? null : Number(p.awayScore),
-      is_auto_zero: false,
-    }))
+    const result = await persistPredictions()
 
-    if (rows.length === 0) {
-      setSaveMessage('No hay cambios para guardar.')
-      return
-    }
-
-    const { error } = await supabase
-      .from('predictions')
-      .upsert(rows, { onConflict: 'entry_id,match_id' })
-
-    if (error) {
-      setSaveError(`Error al guardar: ${error.message}`)
+    if (result.errorMessage) {
+      setSaveError(`Error al guardar: ${result.errorMessage}`)
       return
     }
 
     didUserEditRef.current = false
-    setSaveMessage('Pronósticos guardados correctamente ✅')
+    setSaveMessage(result.changed ? 'Pronósticos guardados correctamente ✅' : 'No hay cambios para guardar.')
 
     setTimeout(() => {
       setSaveMessage('')
@@ -993,22 +1024,10 @@ const handleAutoSave = async () => {
     setAutoSaving(true)
     setSaveError('')
 
-    const rows = Object.entries(predictions).map(([matchId, p]) => ({
-      entry_id: activeEntryId,
-      match_id: matchId,
-      home_score_predicted: p.homeScore === '' ? null : Number(p.homeScore),
-      away_score_predicted: p.awayScore === '' ? null : Number(p.awayScore),
-      is_auto_zero: false,
-    }))
+    const result = await persistPredictions()
 
-    if (rows.length === 0) return
-
-    const { error } = await supabase
-      .from('predictions')
-      .upsert(rows, { onConflict: 'entry_id,match_id' })
-
-    if (error) {
-      setSaveError(`Error en guardado automático: ${error.message}`)
+    if (result.errorMessage) {
+      setSaveError(`Error en guardado automático: ${result.errorMessage}`)
       return
     }
 
@@ -1631,23 +1650,18 @@ useEffect(() => {
   }
 
   const saveOfficialResult = async (matchId: string) => {
-    const current = results[matchId]
+    const current = results[matchId] ?? { homeScore: '', awayScore: '' }
 
     setSavingId(matchId)
 
-    const homeScore =
-      current?.homeScore === '' || current?.homeScore == null
-        ? null
-        : Number(current.homeScore)
+    const cleanHomeScore = current.homeScore.trim()
+    const cleanAwayScore = current.awayScore.trim()
 
-    const awayScore =
-      current?.awayScore === '' || current?.awayScore == null
-        ? null
-        : Number(current.awayScore)
-
+    const homeScore = cleanHomeScore === '' ? null : Number(cleanHomeScore)
+    const awayScore = cleanAwayScore === '' ? null : Number(cleanAwayScore)
     const hasFullResult = homeScore !== null && awayScore !== null
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('matches')
       .update({
         home_score: homeScore,
@@ -1656,6 +1670,8 @@ useEffect(() => {
         is_open: !hasFullResult,
       })
       .eq('id', matchId)
+      .select('home_score, away_score, is_open, is_finished')
+      .single()
 
     setSavingId(null)
 
@@ -1664,11 +1680,19 @@ useEffect(() => {
       return
     }
 
+    setResults((prev) => ({
+      ...prev,
+      [matchId]: {
+        homeScore: data?.home_score == null ? '' : String(data.home_score),
+        awayScore: data?.away_score == null ? '' : String(data.away_score),
+      },
+    }))
+
     setMatchStates((prev) => ({
       ...prev,
       [matchId]: {
-        isOpen: !hasFullResult,
-        isFinished: hasFullResult,
+        isOpen: data?.is_open ?? !hasFullResult,
+        isFinished: data?.is_finished ?? hasFullResult,
       },
     }))
 
