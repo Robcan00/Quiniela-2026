@@ -5129,72 +5129,78 @@ if (view === 'admin') {
           </div>
         </header>
 
-        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-          {user.role === 'admin' && (
-            <div className="order-1 md:order-7 md:col-span-2">
-              <DashboardCard
-                title="Panel de Administración"
-                description="Solo para administradores"
-                badge="Admin"
-                onClick={() => openView('admin')}
-              />
-            </div>
-          )}
+       <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
+  {user.role === 'admin' && (
+    <div className="order-1 md:order-7 md:col-span-2">
+      <DashboardCard
+        title="Panel de Administración"
+        description="Solo para administradores"
+        badge="Admin"
+        onClick={() => openView('admin')}
+      />
+    </div>
+  )}
 
-          <div className={`${user.role === 'admin' ? 'order-7' : 'order-1'} md:order-1 md:contents`}>
-            <DashboardCard
-              title="Reglamento Oficial"
-              description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
-              badge="Info"
-              onClick={() => router.push('/rules')}
-            />
-          </div>
+  {/* IZQUIERDA 1 */}
+  <div className={`${user.role === 'admin' ? 'order-2' : 'order-1'} md:order-1 md:contents`}>
+    <DashboardCard
+      title="Mi Quiniela"
+      description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
+      badge="Jugador"
+      onClick={() => openView('picks')}
+    />
+  </div>
 
-          <div className={`${user.role === 'admin' ? 'order-3' : 'order-3'} md:order-2 md:contents`}>
-            <DashboardCard
-              title="Tabla general"
-              description="Consulta posiciones, puntos acumulados y aciertos que cada Quiniela y participante."
-              badge="Ranking"
-              onClick={() => openView('leaderboard')}
-            />
-          </div>
+  {/* DERECHA 1 */}
+  <div className={`${user.role === 'admin' ? 'order-3' : 'order-4'} md:order-2 md:contents`}>
+    <DashboardCard
+      title="Tabla general"
+      description="Consulta posiciones, puntos acumulados y aciertos que cada Quiniela y participante."
+      badge="Ranking"
+      onClick={() => openView('leaderboard')}
+    />
+  </div>
 
-          <div className={`${user.role === 'admin' ? 'order-2' : 'order-2'} md:order-3 md:contents`}>
-            <DashboardCard
-              title="Mi Quiniela"
-              description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
-              badge="Jugador"
-              onClick={() => openView('picks')}
-            />
-          </div>
+  {/* IZQUIERDA 2 */}
+  <div className={`${user.role === 'admin' ? 'order-4' : 'order-2'} md:order-3 md:contents`}>
+    <DashboardCard
+      title="Ver todas las Quinielas por partido"
+      description="Aqui podras ver lo que puso cada quien en su quiniela."
+      badge="Público"
+      onClick={() => openView('public')}
+    />
+  </div>
 
-          <div className={`${user.role === 'admin' ? 'order-6' : 'order-6'} md:order-4 md:contents`}>
-            <DashboardCard
-              title="Datos del Participante"
-              description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
-              badge="Perfil"
-              onClick={() => openView('participant-data')}
-            />
-          </div>
+  {/* DERECHA 2 */}
+  <div className={`${user.role === 'admin' ? 'order-6' : 'order-5'} md:order-4 md:contents`}>
+    <DashboardCard
+      title="Datos del Participante"
+      description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
+      badge="Perfil"
+      onClick={() => openView('participant-data')}
+    />
+  </div>
 
-          <div className={`${user.role === 'admin' ? 'order-4' : 'order-4'} md:order-5 md:contents`}>
-            <DashboardCard
-              title="Ver todas las Quinielas por partido"
-              description="Aqui podras ver lo que puso cada quien en su quiniela."
-              badge="Público"
-              onClick={() => openView('public')}
-            />
-          </div>
+  {/* IZQUIERDA 3 */}
+  <div className={`${user.role === 'admin' ? 'order-7' : 'order-3'} md:order-5 md:contents`}>
+    <DashboardCard
+      title="Reglamento Oficial"
+      description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
+      badge="Info"
+      onClick={() => router.push('/rules')}
+    />
+  </div>
 
-          <div className={`${user.role === 'admin' ? 'order-5' : 'order-5'} md:order-6 md:contents`}>
-            <DashboardCard
-              title="Ver todas las Quinielas por participante"
-              description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
-              badge="Público"
-              onClick={() => openView('public-by-participant')}
-            />
-          </div>
-        </section>
+  {/* DERECHA 3 */}
+  <div className={`${user.role === 'admin' ? 'order-5' : 'order-6'} md:order-6 md:contents`}>
+    <DashboardCard
+      title="Ver todas las Quinielas por participante"
+      description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
+      badge="Público"
+      onClick={() => openView('public-by-participant')}
+    />
+  </div>
+</section>
       </div>
     </main>
   )
