@@ -1994,16 +1994,12 @@ useEffect(() => {
                                 className="h-12 w-12 sm:h-14 sm:w-16 rounded-xl sm:rounded-2xl border border-white/10 bg-white/10 text-center text-lg sm:text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
                               />
                               <button
-                                onClick={() => saveOfficialResult(match.id)}
-                                disabled={
-                                  savingId === match.id ||
-                                  current.homeScore === '' ||
-                                  current.awayScore === ''
-                                }
+  onClick={() => saveOfficialResult(match.id)}
+  disabled={savingId === match.id}
                                 className={`ml-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                                  current.homeScore === '' || current.awayScore === ''
-                                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                                    : 'bg-white text-black hover:bg-white/90'
+                                  savingId === match.id
+  ? 'bg-white/10 text-white/40 cursor-not-allowed'
+  : 'bg-white text-black hover:bg-white/90'
                                 }`}
                               >
                                 {savingId === match.id ? 'Guardando...' : 'Guardar'}
