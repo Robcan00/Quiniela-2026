@@ -1644,10 +1644,46 @@ useEffect(() => {
   const saveOfficialResult = async (matchId: string) => {
     const current = results[matchId]
 
-    if (!current || current.homeScore === '' || current.awayScore === '') {
-      alert('Falta capturar ambos marcadores')
-      return
-    }
+    const saveOfficialResult = async (matchId: string) => {
+  const current = results[matchId]
+
+  setSavingId(matchId)
+
+  const homeScore =
+    current?.homeScore === '' ? null : Number(current?.homeScore)
+
+  const awayScore =
+    current?.awayScore === '' ? null : Number(current?.awayScore)
+
+  const isFinished =
+    homeScore !== null && awayScore !== null
+
+  const { error } = await supabase
+    .from('matches')
+    .update({
+      home_score: homeScore,
+      away_score: awayScore,
+      is_finished: isFinished,
+      is_open: !isFinished,
+    })
+    .eq('id', matchId)
+
+  setSavingId(null)
+
+  if (error) {
+    alert(`Error al guardar resultado oficial: ${error.message}`)
+  } else {
+    setMatchStates((prev) => ({
+      ...prev,
+      [matchId]: {
+        isOpen: !isFinished,
+        isFinished,
+      },
+    }))
+
+    alert('Resultado actualizado ✅')
+  }
+}
 
     setSavingId(matchId)
 
