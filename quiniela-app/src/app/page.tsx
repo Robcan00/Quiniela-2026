@@ -146,6 +146,7 @@ const ADMIN_FEE_PER_ENTRY = 200
 const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
 const GUARANTEED_PRIZE_POOL = 375000
 const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
+const TUTORIAL_URL = 'https://youtu.be/EDuCIYgXZtQ'
 
 function scrollToPageTop() {
   if (typeof window === 'undefined') return
@@ -249,6 +250,73 @@ function WhatsAppSupportButton({
     >
       💬 Soporte
     </a>
+  )
+}
+
+function TutorialWelcomeModal({
+  isOpen,
+  onWatchTutorial,
+  onLater,
+  onNeverShowAgain,
+}: {
+  isOpen: boolean
+  onWatchTutorial: () => void
+  onLater: () => void
+  onNeverShowAgain: () => void
+}) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-md">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-yellow-400/30 bg-zinc-950 p-5 text-white shadow-[0_0_60px_rgba(250,204,21,0.18)] sm:p-6 md:p-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/12 via-white/[0.03] to-transparent" />
+        <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
+
+        <div className="relative z-10">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-3xl shadow-[0_0_30px_rgba(250,204,21,0.20)]">
+            ▶️
+          </div>
+
+          <p className="mt-5 text-center text-[11px] font-bold uppercase tracking-[0.24em] text-yellow-300/80">
+            Tutorial rápido
+          </p>
+
+          <h2 className="mt-3 text-center text-2xl font-black tracking-tight text-white sm:text-3xl">
+            ¿Quieres ver un video rápido para aprender a usar la quiniela?
+          </h2>
+
+          <p className="mx-auto mt-4 max-w-md text-center text-sm leading-6 text-white/65">
+            Te explicamos cómo usar la app, llenar tus picks, pagar tu quiniela y revisar resultados.
+          </p>
+
+          <div className="mt-7 grid gap-3">
+            <button
+              type="button"
+              onClick={onWatchTutorial}
+              className="w-full rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 px-5 py-4 text-sm font-black text-black shadow-[0_0_28px_rgba(250,204,21,0.24)] transition hover:scale-[1.01] active:scale-[0.99]"
+            >
+              Ver tutorial
+            </button>
+
+            <button
+              type="button"
+              onClick={onLater}
+              className="w-full rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.99]"
+            >
+              Después
+            </button>
+
+            <button
+              type="button"
+              onClick={onNeverShowAgain}
+              className="w-full rounded-2xl px-5 py-3 text-sm font-semibold text-white/50 transition hover:text-white"
+            >
+              No volver a mostrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -3899,6 +3967,7 @@ const badgeDetail = !hasPrediction
 export default function Home() {
   const router = useRouter()
   const [user, setUser] = useState<UserState>(null)
+  const [showTutorialModal, setShowTutorialModal] = useState(false)
 
   const canViewPublic =
     user?.role === 'admin' ||
@@ -3940,6 +4009,25 @@ const creatingDefaultEntryRef = useRef<string | null>(null)
 const openView = (nextView: ViewMode) => {
   scrollToPageTop()
   setView(nextView)
+}
+
+const openTutorialVideo = () => {
+  window.open(TUTORIAL_URL, '_blank', 'noopener,noreferrer')
+}
+
+const dismissTutorialForCurrentUser = () => {
+  if (!user?.id || typeof window === 'undefined') {
+    setShowTutorialModal(false)
+    return
+  }
+
+  try {
+    window.localStorage.setItem(`quiniela-tutorial-seen-${user.id}`, 'true')
+  } catch {
+    // noop
+  }
+
+  setShowTutorialModal(false)
 }
 
 async function upsertLandingProfile(userId: string, userEmail: string) {
@@ -4306,6 +4394,24 @@ useEffect(() => {
     setIsEditingParticipantProfile(false)
   }
 }, [isParticipantEditLocked, isEditingParticipantProfile])
+
+useEffect(() => {
+  if (!user?.id || typeof window === 'undefined') {
+    setShowTutorialModal(false)
+    return
+  }
+
+  try {
+    const tutorialSeen = window.localStorage.getItem(`quiniela-tutorial-seen-${user.id}`)
+
+    if (!tutorialSeen) {
+      setShowTutorialModal(true)
+    }
+  } catch {
+    setShowTutorialModal(true)
+  }
+}, [user?.id])
+
 useEffect(() => {
   if (!user?.id) return
 
@@ -5132,6 +5238,16 @@ if (view === 'admin') {
 }
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+      <TutorialWelcomeModal
+        isOpen={showTutorialModal}
+        onWatchTutorial={() => {
+          openTutorialVideo()
+          setShowTutorialModal(false)
+        }}
+        onLater={() => setShowTutorialModal(false)}
+        onNeverShowAgain={dismissTutorialForCurrentUser}
+      />
+
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.04] to-yellow-400/[0.04] p-4 shadow-2xl sm:p-5 md:p-6">
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -5357,6 +5473,16 @@ if (view === 'admin') {
       description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
       badge="Público"
       onClick={() => openView('public-by-participant')}
+    />
+  </div>
+
+  {/* TUTORIAL */}
+  <div className={`${user.role === 'admin' ? 'order-8' : 'order-7'} md:order-8 md:col-span-2`}>
+    <DashboardCard
+      title="Ver tutorial"
+      description="Aprende cómo usar la app, llenar tus picks, pagar tu quiniela y revisar resultados."
+      badge="Guía"
+      onClick={openTutorialVideo}
     />
   </div>
 </section>
