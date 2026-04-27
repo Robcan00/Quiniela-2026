@@ -2462,7 +2462,7 @@ useEffect(() => {
                 </div>
               ) : (
                 <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
-                  <div className="hidden grid-cols-[1.2fr_1fr_120px_130px_240px] border-b border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-xs font-bold uppercase tracking-[0.18em] text-yellow-400 lg:grid">
+                  <div className="hidden grid-cols-[1.15fr_0.95fr_110px_110px_330px] border-b border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-xs font-bold uppercase tracking-[0.18em] text-yellow-400 lg:grid">
                     <div>Participante</div>
                     <div>Quiniela</div>
                     <div>Estatus</div>
@@ -2478,7 +2478,7 @@ useEffect(() => {
                       return (
                         <div
                           key={entry.id}
-                          className="grid gap-4 px-4 py-5 text-sm lg:grid-cols-[1.2fr_1fr_120px_130px_240px] lg:items-center"
+                          className="grid gap-4 px-4 py-5 text-sm lg:grid-cols-[1.15fr_0.95fr_110px_110px_330px] lg:items-center"
                         >
                           <div className="min-w-0">
                             <p className="font-bold text-white">
@@ -2505,24 +2505,23 @@ useEffect(() => {
                             </span>
                           </div>
 
-                          <div className="flex min-h-[70px] flex-col items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-3 text-center lg:items-end">
-  <p className="text-sm font-bold text-emerald-200">
-    {formatCurrencyMXN(Number(entry.payment_amount ?? 0))}
-  </p>
+                          <div className="min-w-0 text-left leading-tight lg:text-right">
+                            <p className="whitespace-nowrap text-sm font-black text-white">
+                              {formatCurrencyMXN(Number(entry.payment_amount ?? 0))}
+                            </p>
+                            <p className="mt-1 whitespace-nowrap text-[11px] text-white/45">
+                              {entry.paid_at
+                                ? new Date(entry.paid_at).toLocaleDateString('es-MX')
+                                : 'Sin fecha'}
+                            </p>
+                          </div>
 
-  <p className="mt-1 text-[11px] text-emerald-200/70 leading-tight">
-    {entry.paid_at
-      ? new Date(entry.paid_at).toLocaleDateString('es-MX')
-      : 'Sin fecha'}
-  </p>
-</div>
-
-                          <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
                             <button
                               type="button"
                               disabled={isUpdating}
                               onClick={() => markEntryAsPaid(entry.id)}
-                              className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 transition hover:bg-emerald-400/15 disabled:opacity-40"
+                              className="min-h-[52px] min-w-[74px] rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold leading-tight text-emerald-200 transition hover:bg-emerald-400/15 disabled:opacity-40"
                             >
                               Pagado
                             </button>
@@ -2531,7 +2530,7 @@ useEffect(() => {
                               type="button"
                               disabled={isUpdating}
                               onClick={() => markEntryAsPending(entry.id)}
-                              className="rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-200 transition hover:bg-red-400/15 disabled:opacity-40"
+                              className="min-h-[52px] min-w-[86px] rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-bold leading-tight text-red-200 transition hover:bg-red-400/15 disabled:opacity-40"
                             >
                               Pendiente
                             </button>
@@ -2540,7 +2539,7 @@ useEffect(() => {
                               type="button"
                               disabled={isUpdating}
                               onClick={() => markEntryAsExempt(entry.id)}
-                              className="rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2 text-xs font-bold text-sky-200 transition hover:bg-sky-400/15 disabled:opacity-40"
+                              className="min-h-[52px] min-w-[74px] rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2 text-xs font-bold leading-tight text-sky-200 transition hover:bg-sky-400/15 disabled:opacity-40"
                             >
                               Exento
                             </button>
@@ -2569,7 +2568,7 @@ useEffect(() => {
     // refrescar UI
     setPaymentEntries((prev) => prev.filter((e) => e.id !== entry.id))
   }}
-  className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300 transition hover:bg-red-500/15"
+  className="min-h-[52px] min-w-[92px] rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold leading-tight text-red-300 transition hover:bg-red-500/15"
 >
   Borrar quiniela
 </button>
