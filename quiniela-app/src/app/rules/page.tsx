@@ -442,6 +442,10 @@ export default function RulesPage() {
                 </ol>
 
                 <p className="mt-3 text-zinc-100">
+                  Los criterios de desempate se aplicarán de manera sucesiva y únicamente entre las quinielas que permanezcan empatadas en cada etapa.
+                </p>
+
+                <p className="mt-3 text-zinc-100">
                   Para este efecto, se sumarán todos los goles pronosticados por cada quiniela y se compararán contra el total real de goles anotados en la fase de grupos. Ganará la quiniela cuya diferencia absoluta sea menor.
                 </p>
               </div>
