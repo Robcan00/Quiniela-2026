@@ -2195,6 +2195,14 @@ useEffect(() => {
                   {matches.length} partidos
                 </span>
               </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={onBack}
+                  className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+                >
+                  ← Volver a menú principal
+                </button>
+              </div>
               <div className="space-y-4">
                 {matches.map((match) => {
                   const current = results[match.id] ?? {
