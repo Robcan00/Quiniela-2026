@@ -1168,17 +1168,20 @@ setTimeLeft({
 }, [])
 
   const groupedMatches = useMemo(() => {
-  const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
+  const sortedMatches = [...MATCHES].sort((a, b) => {
+    const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0
+    const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0
+
+    return dateA - dateB
+  })
+
+  const grouped = sortedMatches.reduce<Record<string, Match[]>>((acc, match) => {
     if (!acc[match.group]) acc[match.group] = []
     acc[match.group].push(match)
     return acc
   }, {})
 
-  return Object.fromEntries(
-    Object.entries(grouped).sort(([groupA], [groupB]) =>
-      groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
-    )
-  )
+  return grouped
 }, [])
 
   const totalCompleted = Object.values(predictions).filter(
