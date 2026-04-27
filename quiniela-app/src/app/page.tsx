@@ -249,7 +249,12 @@ function WhatsAppSupportButton({
       rel="noopener noreferrer"
       className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
     >
-      💬 Soporte
+      <img
+  src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+  alt="WhatsApp"
+  className="h-6 w-6"
+/>
+<span>Soporte</span>
     </a>
   )
 }
