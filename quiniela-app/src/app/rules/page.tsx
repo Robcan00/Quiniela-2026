@@ -238,7 +238,7 @@ export default function RulesPage() {
               <StatPill label="Cierre de picks" value="11 jun 2026 · 10:00 AM" />
               <StatPill label="Pago límite" value="10 jun 2026 · 10:00 AM" />
               <StatPill label="Costo por quiniela" value="$2,500 MXN" />
-              <StatPill label="Bolsa mínima garantizada" value="$350,000 MXN" />
+              <StatPill label="Bolsa mínima garantizada" value="$300,000 MXN" />
             </div>
           </div>
 
@@ -353,7 +353,7 @@ export default function RulesPage() {
             <SectionCard number="8" title="Bolsa mínima garantizada" icon={Landmark}>
               <div className="rounded-[22px] border border-[#f0c24e]/35 bg-[#f0c24e]/5 p-5 text-center">
                 <div className="text-sm uppercase tracking-wide text-zinc-400">Bolsa mínima garantizada</div>
-                <div className="mt-2 text-4xl font-black text-[#f0c24e]">$350,000.00 MXN</div>
+                <div className="mt-2 text-4xl font-black text-[#f0c24e]">$300,000.00 MXN</div>
               </div>
 
               <div className="rounded-[22px] border border-[#f0c24e]/25 bg-gradient-to-br from-[#f0c24e]/10 via-white/[0.03] to-transparent p-5 shadow-lg">

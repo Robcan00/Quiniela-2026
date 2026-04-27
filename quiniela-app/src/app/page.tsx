@@ -447,7 +447,51 @@ function LeaderboardScreen({
     return `#${index + 1}`
   }
 
+  const getLeaderboardRowKey = (row: LeaderboardRow, index: number) =>
+    row.entry_id ?? `${row.user_id}-${row.entry_name ?? 'quiniela'}-${index}`
+
+  const tiebreakerWinnerKeys = useMemo(() => {
+    const groups = new Map<
+      string,
+      Array<{ row: LeaderboardRow; index: number; key: string; goalDiff: number }>
+    >()
+
+    rows.forEach((row, index) => {
+      if (row.goal_diff == null) return
+
+      const groupKey = `${row.total_points}-${row.exact_hits}`
+      const currentGroup = groups.get(groupKey) ?? []
+
+      currentGroup.push({
+        row,
+        index,
+        key: getLeaderboardRowKey(row, index),
+        goalDiff: row.goal_diff,
+      })
+
+      groups.set(groupKey, currentGroup)
+    })
+
+    const winners = new Set<string>()
+
+    groups.forEach((group) => {
+      if (group.length < 2) return
+
+      const bestGoalDiff = Math.min(...group.map((item) => item.goalDiff))
+      const bestRows = group.filter((item) => item.goalDiff === bestGoalDiff)
+
+      if (bestRows.length === 1) {
+        winners.add(bestRows[0].key)
+      }
+    })
+
+    return winners
+  }, [rows])
+
   const leader = rows[0]
+  const leaderWonTiebreaker = leader
+    ? tiebreakerWinnerKeys.has(getLeaderboardRowKey(leader, 0))
+    : false
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
@@ -513,6 +557,12 @@ function LeaderboardScreen({
                   <p className="truncate text-sm font-semibold text-yellow-300">
                     {leader.entry_name || 'Quiniela'}
                   </p>
+
+                  {leaderWonTiebreaker && (
+                    <span className="mt-3 inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-200">
+                      Ganó por desempate
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -575,6 +625,9 @@ function LeaderboardScreen({
               <div className="space-y-3 md:hidden">
                 {rows.map((row, index) => {
                   const isCurrentUser = row.user_id === currentUser?.id
+                  const wonTiebreaker = tiebreakerWinnerKeys.has(
+                    getLeaderboardRowKey(row, index)
+                  )
 
                   return (
                     <article
@@ -606,11 +659,19 @@ function LeaderboardScreen({
                               {row.entry_name || 'Quiniela'}
                             </p>
 
-                            {isCurrentUser && (
-                              <span className="mt-3 inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                                Tú
-                              </span>
-                            )}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {isCurrentUser && (
+                                <span className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                  Tú
+                                </span>
+                              )}
+
+                              {wonTiebreaker && (
+                                <span className="inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-200">
+                                  Ganó por desempate
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -671,6 +732,9 @@ function LeaderboardScreen({
 
                 {rows.map((row, index) => {
                   const isCurrentUser = row.user_id === currentUser?.id
+                  const wonTiebreaker = tiebreakerWinnerKeys.has(
+                    getLeaderboardRowKey(row, index)
+                  )
 
                   return (
                     <div
@@ -687,9 +751,17 @@ function LeaderboardScreen({
                         <p className="truncate font-semibold text-white">
                           {row.full_name || 'Participante'}
                         </p>
-                        <p className="text-xs text-white/45">
-                          {isCurrentUser ? 'Tu usuario actual' : 'Jugador'}
-                        </p>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          <span className="text-xs text-white/45">
+                            {isCurrentUser ? 'Tu usuario actual' : 'Jugador'}
+                          </span>
+
+                          {wonTiebreaker && (
+                            <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-yellow-200">
+                              Ganó por desempate
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="truncate font-semibold text-white">
