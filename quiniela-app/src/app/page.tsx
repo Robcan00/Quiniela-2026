@@ -146,7 +146,8 @@ const ADMIN_FEE_PER_ENTRY = 200
 const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
 const GUARANTEED_PRIZE_POOL = 375000
 const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
-const TUTORIAL_URL = 'https://youtu.be/EDuCIYgXZtQ'
+const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
+const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&rel=0`
 
 function scrollToPageTop() {
   if (typeof window === 'undefined') return
@@ -313,6 +314,57 @@ function TutorialWelcomeModal({
             >
               No volver a mostrar
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TutorialVideoModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean
+  onClose: () => void
+}) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 px-4 py-6 backdrop-blur-md">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-yellow-400/30 bg-zinc-950 p-4 text-white shadow-[0_0_70px_rgba(250,204,21,0.22)] sm:p-5">
+        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-transparent" />
+        <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
+
+        <div className="relative z-10">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-yellow-300/80">
+                Tutorial
+              </p>
+              <h2 className="mt-1 truncate text-lg font-black text-white sm:text-2xl">
+                Cómo usar la Súper Quiniela 2026
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
+            >
+              ✕ Cerrar
+            </button>
+          </div>
+
+          <div className="aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <iframe
+  className="h-full w-full"
+  src={TUTORIAL_EMBED_URL}
+  title="Tutorial Súper Quiniela 2026"
+  referrerPolicy="strict-origin-when-cross-origin"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  allowFullScreen
+/>
           </div>
         </div>
       </div>
@@ -3968,6 +4020,7 @@ export default function Home() {
   const router = useRouter()
   const [user, setUser] = useState<UserState>(null)
   const [showTutorialModal, setShowTutorialModal] = useState(false)
+  const [showTutorialVideo, setShowTutorialVideo] = useState(false)
 
   const canViewPublic =
     user?.role === 'admin' ||
@@ -4012,7 +4065,7 @@ const openView = (nextView: ViewMode) => {
 }
 
 const openTutorialVideo = () => {
-  window.open(TUTORIAL_URL, '_blank', 'noopener,noreferrer')
+  setShowTutorialVideo(true)
 }
 
 const dismissTutorialForCurrentUser = () => {
@@ -5248,6 +5301,11 @@ if (view === 'admin') {
         onNeverShowAgain={dismissTutorialForCurrentUser}
       />
 
+      <TutorialVideoModal
+        isOpen={showTutorialVideo}
+        onClose={() => setShowTutorialVideo(false)}
+      />
+
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.04] to-yellow-400/[0.04] p-4 shadow-2xl sm:p-5 md:p-6">
           <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -5404,6 +5462,16 @@ if (view === 'admin') {
           </div>
         </header>
 
+<div className="mt-6">
+  <button
+    type="button"
+    onClick={openTutorialVideo}
+    className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+  >
+    🎥 Ver tutorial
+  </button>
+</div>
+
        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
   {user.role === 'admin' && (
     <div className="order-1 md:order-7 md:col-span-2">
@@ -5476,15 +5544,6 @@ if (view === 'admin') {
     />
   </div>
 
-  {/* TUTORIAL */}
-  <div className={`${user.role === 'admin' ? 'order-8' : 'order-7'} md:order-8 md:col-span-2`}>
-    <DashboardCard
-      title="Ver tutorial"
-      description="Aprende cómo usar la app, llenar tus picks, pagar tu quiniela y revisar resultados."
-      badge="Guía"
-      onClick={openTutorialVideo}
-    />
-  </div>
 </section>
       </div>
     
