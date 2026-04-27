@@ -332,8 +332,7 @@ function TutorialVideoModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 px-4 py-6 backdrop-blur-md">
-      <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-yellow-400/30 bg-zinc-950 p-4 text-white shadow-[0_0_70px_rgba(250,204,21,0.22)] sm:p-5">
-        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-transparent" />
+      <div className="relative flex h-[92vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-3xl border border-yellow-400/30 bg-zinc-950 p-3 shadow-[0_0_70px_rgba(250,204,21,0.22)] sm:p-5">
         <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
 
         <div className="relative z-10">
@@ -356,19 +355,20 @@ function TutorialVideoModal({
             </button>
           </div>
 
-          <div className="aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-black">
-            <iframe
-  className="h-full w-full"
-  src={TUTORIAL_EMBED_URL}
-  title="Tutorial Súper Quiniela 2026"
-  referrerPolicy="strict-origin-when-cross-origin"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-  allowFullScreen
-/>
+          <div className="mx-auto h-[80vh] w-full max-w-[430px] overflow-hidden rounded-2xl border border-white/10 bg-black">
+  <iframe
+    className="h-full w-full"
+    src={TUTORIAL_EMBED_URL}
+    title="Tutorial Súper Quiniela 2026"
+    referrerPolicy="strict-origin-when-cross-origin"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowFullScreen
+  />
+</div>
           </div>
         </div>
       </div>
-    </div>
+  
   )
 }
 
