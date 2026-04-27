@@ -232,6 +232,26 @@ Quiniela ID: ${activeEntryId || 'N/A'}`
   return `${base}?text=${encodeURIComponent(message)}`
 }
 
+
+function WhatsAppSupportButton({
+  user,
+  activeEntryId,
+}: {
+  user?: UserState
+  activeEntryId?: string | null
+}) {
+  return (
+    <a
+      href={getWhatsAppLink(user, activeEntryId)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
+    >
+      💬 Soporte
+    </a>
+  )
+}
+
 function formatCurrencyMXN(amount: number) {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -808,14 +828,7 @@ function LeaderboardScreen({
         </section>
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={currentUser} />
 
 </main>
   )
@@ -1582,14 +1595,7 @@ useEffect(() => {
         </div>
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
 
 </main>
   )
@@ -2494,14 +2500,7 @@ useEffect(() => {
         </div>
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton />
 
 </main>
   )
@@ -2714,14 +2713,7 @@ if (!canView) {
         <PublicRevealLockedCard />
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={user} />
 
 </main>
   )
@@ -2916,14 +2908,7 @@ return (
         )}
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={user} />
 
 </main>
   )
@@ -3403,14 +3388,7 @@ function PublicPicksByParticipantScreen({
         )}
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={user} />
 
 </main>
   )
@@ -3912,14 +3890,7 @@ const badgeDetail = !hasPrediction
         </div>
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton />
 
 </main>
   )
@@ -4880,14 +4851,7 @@ creatingDefaultEntryRef.current = null
         </div>
       </section>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton />
 
 </main>
   )
@@ -5136,14 +5100,7 @@ if (view === 'participant-data') {
         </section>
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
 
 </main>
   )
@@ -5405,14 +5362,7 @@ if (view === 'admin') {
 </section>
       </div>
     
-<a
-  href={getWhatsAppLink(user, activeEntryId)}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
->
-  💬 Soporte
-</a>
+<WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
 
 </main>
   )
