@@ -1882,8 +1882,12 @@ useEffect(() => {
     })
 
     const grouped = sortedMatches.reduce<Record<string, Match[]>>((acc, match) => {
-      if (!acc[match.group]) acc[match.group] = []
-      acc[match.group].push(match)
+      const cleanKickoff = match.kickoff.replace(' (Hora CDMX)', '')
+      const [dateLabel] = cleanKickoff.split(' · ')
+      const heading = dateLabel?.toUpperCase() || 'SIN FECHA'
+
+      if (!acc[heading]) acc[heading] = []
+      acc[heading].push(match)
       return acc
     }, {})
 
