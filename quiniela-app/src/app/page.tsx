@@ -152,14 +152,14 @@ const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?a
 function scrollToPageTop() {
   if (typeof window === 'undefined') return
 
-  window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
 
   window.requestAnimationFrame(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   })
 
   setTimeout(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, 0)
 }
 
@@ -249,7 +249,8 @@ function WhatsAppSupportButton({
       href={getWhatsAppLink(user, activeEntryId)}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-green-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98]"
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-green-500 px-4 py-2 text-xs font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98] sm:gap-3 sm:px-5 sm:py-3 sm:text-sm"
+      style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
     >
       <img
   src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
@@ -1366,7 +1367,7 @@ useEffect(() => {
 </div>
           </div>
 
-          <div className="grid min-w-[320px] gap-3">
+          <div className="grid w-full max-w-[320px] gap-3">
   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
     <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
       Progreso de captura
@@ -2194,15 +2195,6 @@ useEffect(() => {
                   {matches.length} partidos
                 </span>
               </div>
-              <div className="mt-6 flex justify-end">
-  <button
-    onClick={onBack}
-    className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
-  >
-    ← Volver a menú principal
-  </button>
-</div>
-
               <div className="space-y-4">
                 {matches.map((match) => {
                   const current = results[match.id] ?? {
