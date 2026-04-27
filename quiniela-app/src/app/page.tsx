@@ -55,6 +55,7 @@ type LeaderboardRow = {
   total_points: number
   exact_hits: number
   outcome_hits: number
+  goal_diff?: number
 }
 type EntryRow = {
   id: string
@@ -470,7 +471,7 @@ function LeaderboardScreen({
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 md:text-base">
-                Posiciones por quiniela, puntos acumulados, marcadores exactos y aciertos.
+                Posiciones por quiniela, puntos acumulados, marcadores exactos, aciertos y diferencia de goles.
               </p>
             </div>
 
@@ -515,7 +516,7 @@ function LeaderboardScreen({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:min-w-[360px]">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:min-w-[480px]">
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
                     Puntos
@@ -540,6 +541,15 @@ function LeaderboardScreen({
                   </p>
                   <p className="mt-2 text-xl font-bold text-white sm:text-2xl">
                     {leader.outcome_hits}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">
+                    Dif. goles
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-yellow-300 sm:text-2xl">
+                    {leader.goal_diff ?? '—'}
                   </p>
                 </div>
               </div>
@@ -614,7 +624,7 @@ function LeaderboardScreen({
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="mt-4 grid grid-cols-3 gap-3">
                         <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
                             Exactos
@@ -632,6 +642,15 @@ function LeaderboardScreen({
                             {row.outcome_hits}
                           </p>
                         </div>
+
+                        <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">
+                            Dif. goles
+                          </p>
+                          <p className="mt-1 text-xl font-bold text-yellow-300">
+                            {row.goal_diff ?? '—'}
+                          </p>
+                        </div>
                       </div>
                     </article>
                   )
@@ -640,13 +659,14 @@ function LeaderboardScreen({
 
               {/* DESKTOP TABLE */}
               <div className="hidden overflow-hidden rounded-3xl border border-white/10 bg-white/5 md:block">
-                <div className="grid grid-cols-[90px_1.2fr_1.2fr_150px_150px_120px] border-b border-yellow-500/20 bg-yellow-500/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
+                <div className="grid grid-cols-[90px_1.2fr_1.2fr_120px_120px_120px_120px] border-b border-yellow-500/20 bg-yellow-500/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
                   <div>Posición</div>
                   <div>Jugador</div>
                   <div>Quiniela</div>
                   <div className="text-center">Puntos</div>
                   <div className="text-center">Exactos</div>
                   <div className="text-center">Aciertos</div>
+                  <div className="text-center">Dif. goles</div>
                 </div>
 
                 {rows.map((row, index) => {
@@ -655,7 +675,7 @@ function LeaderboardScreen({
                   return (
                     <div
                       key={row.entry_id ?? `${row.user_id}-${index}`}
-                      className={`grid grid-cols-[90px_1.2fr_1.2fr_150px_150px_120px] items-center border-b border-white/10 px-6 py-4 text-sm transition duration-200 last:border-b-0 hover:bg-white/[0.06] ${
+                      className={`grid grid-cols-[90px_1.2fr_1.2fr_120px_120px_120px_120px] items-center border-b border-white/10 px-6 py-4 text-sm transition duration-200 last:border-b-0 hover:bg-white/[0.06] ${
                         isCurrentUser ? 'bg-emerald-400/10' : 'bg-transparent'
                       }`}
                     >
@@ -686,6 +706,10 @@ function LeaderboardScreen({
 
                       <div className="text-center font-semibold text-white/80">
                         {row.outcome_hits}
+                      </div>
+
+                      <div className="text-center font-bold text-yellow-300">
+                        {row.goal_diff ?? '—'}
                       </div>
                     </div>
                   )
@@ -5155,7 +5179,7 @@ if (view === 'admin') {
   <div className={`${user.role === 'admin' ? 'order-3' : 'order-4'} md:order-2 md:contents`}>
     <DashboardCard
       title="Tabla general"
-      description="Consulta posiciones, puntos acumulados y aciertos que cada Quiniela y participante."
+      description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
       badge="Ranking"
       onClick={() => openView('leaderboard')}
     />

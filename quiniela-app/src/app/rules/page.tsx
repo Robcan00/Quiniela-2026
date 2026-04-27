@@ -334,7 +334,8 @@ export default function RulesPage() {
               <p>Los participantes se ordenarán conforme a los siguientes criterios:</p>
               <ol className="space-y-3">
                 <OrderedRule n="1">Total de puntos.</OrderedRule>
-                <OrderedRule n="2">Número de aciertos exactos.</OrderedRule>
+                <OrderedRule n="2">Número de marcadores exactos.</OrderedRule>
+                <OrderedRule n="3">Menor diferencia entre goles pronosticados y goles reales de la fase de grupos.</OrderedRule>
               </ol>
             </SectionCard>
 
@@ -437,14 +438,18 @@ export default function RulesPage() {
 
                 <ol className="space-y-3">
                   <OrderedRule n="1">Mayor número de marcadores exactos.</OrderedRule>
-                  <OrderedRule n="2">Mayor número de resultados correctos.</OrderedRule>
+                  <OrderedRule n="2">Mayor proximidad entre el total de goles pronosticados y el total real de goles anotados en la fase de grupos.</OrderedRule>
                 </ol>
+
+                <p className="mt-3 text-zinc-100">
+                  Para este efecto, se sumarán todos los goles pronosticados por cada quiniela y se compararán contra el total real de goles anotados en la fase de grupos. Ganará la quiniela cuya diferencia absoluta sea menor.
+                </p>
               </div>
 
               <div className="mt-4 rounded-[22px] border border-white/10 bg-white/5 p-5">
                 <div className="text-lg font-black text-white">Ejemplo</div>
                 <p className="mt-3 text-zinc-100">
-                  Si las quinielas A, B y C empatan en primer lugar, se aplicarán los criterios de desempate. Si la quiniela C obtiene más marcadores exactos, quedará en primer lugar y recibirá el 70% de la bolsa acumulada; la quiniela A quedará en segundo lugar y recibirá el 20%; y la quiniela B quedará en tercer lugar y recibirá el 10%.
+                  Si las quinielas A, B y C empatan en puntos, primero se revisará cuál tiene más marcadores exactos. Si el empate persiste, se comparará qué quiniela quedó más cerca del total real de goles anotados en la fase de grupos, con base en la suma de todos sus marcadores pronosticados.
                 </p>
                 <p className="mt-3 text-zinc-100">
                   Las demás quinielas recorrerán sus posiciones conforme al resultado final del desempate.
