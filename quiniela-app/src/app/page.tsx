@@ -1874,17 +1874,20 @@ useEffect(() => {
   }, [])
 
   const groupedMatches = useMemo(() => {
-    const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
+    const sortedMatches = [...MATCHES].sort((a, b) => {
+      const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0
+      const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0
+
+      return dateA - dateB
+    })
+
+    const grouped = sortedMatches.reduce<Record<string, Match[]>>((acc, match) => {
       if (!acc[match.group]) acc[match.group] = []
       acc[match.group].push(match)
       return acc
     }, {})
 
-    return Object.fromEntries(
-      Object.entries(grouped).sort(([groupA], [groupB]) =>
-        groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
-      )
-    )
+    return grouped
   }, [])
 
   const updateResult = (
@@ -2301,7 +2304,7 @@ useEffect(() => {
               </div>
             </section>
           ))}
-          <section id="admin-payments" className="scroll-mt-8 mt-8 rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black p-6 shadow-xl md:p-8">
+          <section id="admin-payments" className="scroll-mt-8 mt-8 rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black p-4 shadow-xl sm:p-6 md:p-8">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <div className="inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-yellow-200">
@@ -2525,7 +2528,7 @@ useEffect(() => {
             </div>
 
             <div id="admin-users" className="scroll-mt-8 mt-10 border-t border-white/10 pt-8">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-yellow-400">
                     Usuarios registrados
@@ -2549,55 +2552,104 @@ useEffect(() => {
                   No hay usuarios registrados.
                 </div>
               ) : (
-                <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
-                  <div className="grid grid-cols-[1.4fr_1fr_120px_140px] border-b border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
-                    <div>Participante</div>
-                    <div>Email</div>
-                    <div>Rol</div>
-                    <div className="text-right">Acción</div>
-                  </div>
+                <>
+                  {/* MOBILE: tarjetas para evitar que email/rol/acción rompan el layout */}
+                  <div className="mt-6 space-y-3 lg:hidden">
+                    {users.map((adminUser) => (
+                      <article
+                        key={adminUser.id}
+                        className="rounded-2xl border border-white/10 bg-black/30 p-4 shadow-lg"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="break-words text-sm font-black leading-5 text-white">
+                              {adminUser.full_name || 'Sin nombre'}
+                            </p>
 
-                  {users.map((adminUser) => (
-                    <div
-                      key={adminUser.id}
-                      className="grid grid-cols-[1.4fr_1fr_120px_140px] items-center border-b border-white/10 px-4 py-4 text-sm last:border-b-0"
-                    >
-                      <div className="font-semibold text-white">
-                        {adminUser.full_name || 'Sin nombre'}
-                      </div>
+                            <p className="mt-2 break-all text-xs leading-5 text-white/60">
+                              {adminUser.email || 'Sin email'}
+                            </p>
+                          </div>
 
-                      <div className="text-white/70">
-                        {adminUser.email || 'Sin email'}
-                      </div>
+                          <span
+                            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                              adminUser.role === 'admin'
+                                ? 'bg-yellow-400/10 text-yellow-300'
+                                : 'bg-white/10 text-white/70'
+                            }`}
+                          >
+                            {adminUser.role || 'player'}
+                          </span>
+                        </div>
 
-                      <div>
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                            adminUser.role === 'admin'
-                              ? 'bg-yellow-400/10 text-yellow-300'
-                              : 'bg-white/10 text-white/70'
-                          }`}
-                        >
-                          {adminUser.role || 'player'}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-end">
                         <button
+                          type="button"
                           onClick={() => handleDeleteUser(adminUser)}
                           disabled={deletingUserId === adminUser.id}
-                          className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                          className={`mt-4 w-full rounded-xl px-4 py-3 text-sm font-black transition active:scale-[0.98] ${
                             deletingUserId === adminUser.id
                               ? 'cursor-not-allowed bg-white/10 text-white/35'
                               : 'bg-red-400/10 text-red-200 hover:bg-red-400/15'
                           }`}
                         >
-                          {deletingUserId === adminUser.id ? 'Borrando...' : 'Borrar'}
+                          {deletingUserId === adminUser.id ? 'Borrando...' : 'Borrar usuario'}
                         </button>
-                      </div>
+                      </article>
+                    ))}
+                  </div>
+
+                  {/* DESKTOP: tabla completa */}
+                  <div className="mt-6 hidden overflow-hidden rounded-2xl border border-white/10 lg:block">
+                    <div className="grid grid-cols-[1.4fr_1.6fr_120px_140px] border-b border-yellow-500/20 bg-yellow-500/5 px-4 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
+                      <div>Participante</div>
+                      <div>Email</div>
+                      <div>Rol</div>
+                      <div className="text-right">Acción</div>
                     </div>
-                  ))}
-                </div>
+
+                    {users.map((adminUser) => (
+                      <div
+                        key={adminUser.id}
+                        className="grid grid-cols-[1.4fr_1.6fr_120px_140px] items-center border-b border-white/10 px-4 py-4 text-sm last:border-b-0"
+                      >
+                        <div className="min-w-0 break-words pr-3 font-semibold text-white">
+                          {adminUser.full_name || 'Sin nombre'}
+                        </div>
+
+                        <div className="min-w-0 break-all pr-3 text-white/70">
+                          {adminUser.email || 'Sin email'}
+                        </div>
+
+                        <div>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                              adminUser.role === 'admin'
+                                ? 'bg-yellow-400/10 text-yellow-300'
+                                : 'bg-white/10 text-white/70'
+                            }`}
+                          >
+                            {adminUser.role || 'player'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(adminUser)}
+                            disabled={deletingUserId === adminUser.id}
+                            className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                              deletingUserId === adminUser.id
+                                ? 'cursor-not-allowed bg-white/10 text-white/35'
+                                : 'bg-red-400/10 text-red-200 hover:bg-red-400/15'
+                            }`}
+                          >
+                            {deletingUserId === adminUser.id ? 'Borrando...' : 'Borrar'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
