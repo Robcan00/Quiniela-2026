@@ -5467,15 +5467,17 @@ if (view === 'admin') {
           </div>
         </header>
 
-<div className="mt-6">
-  <button
-    type="button"
-    onClick={openTutorialVideo}
-    className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
-  >
-    🎥 Ver tutorial
-  </button>
-</div>
+{user.role !== 'admin' && (
+  <div className="mt-6">
+    <button
+      type="button"
+      onClick={openTutorialVideo}
+      className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+    >
+      🎥 Ver tutorial
+    </button>
+  </div>
+)}
 
        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
   {user.role === 'admin' && (
@@ -5538,6 +5540,19 @@ if (view === 'admin') {
       onClick={() => router.push('/rules')}
     />
   </div>
+
+  {/* TUTORIAL SOLO ADMIN */}
+  {user.role === 'admin' && (
+    <div className="order-8 md:order-8 md:col-span-2">
+      <button
+        type="button"
+        onClick={openTutorialVideo}
+        className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+      >
+        🎥 Ver tutorial
+      </button>
+    </div>
+  )}
 
   {/* DERECHA 3 */}
   <div className={`${user.role === 'admin' ? 'order-5' : 'order-6'} md:order-6 md:contents`}>
