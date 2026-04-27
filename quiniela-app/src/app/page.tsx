@@ -1434,10 +1434,20 @@ useEffect(() => {
       }
 
       try {
+        // Obtener token de sesión para autenticación
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+
+        if (!token) {
+          alert('Tu sesión ha expirado. Por favor, recarga la página.')
+          return
+        }
+
         const res = await fetch('/api/create-checkout-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             entryId: activeEntryId,
