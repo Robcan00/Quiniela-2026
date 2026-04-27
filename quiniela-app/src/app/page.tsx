@@ -406,7 +406,7 @@ function LeaderboardScreen({
         .select('*')
         .order('total_points', { ascending: false })
         .order('exact_hits', { ascending: false })
-        .order('outcome_hits', { ascending: false })
+        .order('goal_diff', { ascending: true })
 
       if (!mounted) return
 
@@ -4081,7 +4081,7 @@ async function loadPersonalRank(userId: string) {
     .select('*')
     .order('total_points', { ascending: false })
     .order('exact_hits', { ascending: false })
-    .order('outcome_hits', { ascending: false })
+    .order('goal_diff', { ascending: true })
 
   if (error) {
     console.error('Error cargando ranking personal:', error.message)
