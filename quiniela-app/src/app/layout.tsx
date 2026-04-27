@@ -23,7 +23,7 @@ export const metadata = {
     siteName: 'Super Quiniela 2026',
     images: [
       {
-        url: 'https://www.superquiniela2026.com/landing-bg.png',
+        url: 'https://www.superquiniela2026.com/og-image.png',
         width: 1200,
         height: 630,
       },
