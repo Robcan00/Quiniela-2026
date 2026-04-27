@@ -14,15 +14,16 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: 'Super Quiniela Mundial 2026',
-  description: 'Participa en la quiniela del Mundial 2026. Pronósticos, tabla en tiempo real, múltiples quinielas y premios en efectivo.',
+  description: 'Participa en la quiniela más pro del Mundial 2026. Tabla en tiempo real, múltiples quinielas y premios en efectivo.',
+
   openGraph: {
     title: 'Super Quiniela Mundial 2026 ⚽🔥',
-    description: 'Entra a la quiniela más pro del Mundial 2026. Bolsa garantizada y sistema en tiempo real.',
+    description: 'Entra a la quiniela más pro del Mundial 2026.',
     url: 'https://www.superquiniela2026.com',
     siteName: 'Super Quiniela 2026',
     images: [
       {
-        url: 'https://www.superquiniela2026.com/og-image.png', // puedes cambiar luego
+        url: 'https://www.superquiniela2026.com/landing-bg.png',
         width: 1200,
         height: 630,
       },
