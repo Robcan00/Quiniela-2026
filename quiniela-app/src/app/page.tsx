@@ -2098,7 +2098,7 @@ useEffect(() => {
   }
 
   return (
-    <main id="admin-top" className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+    <main id="admin-top" className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
       <div className="mx-auto max-w-7xl">
         <button
           onClick={onBack}
@@ -2107,7 +2107,7 @@ useEffect(() => {
           ← Volver a Menu Principal
         </button>
 
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 shadow-2xl md:p-8">
+        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-5 shadow-2xl sm:p-6 md:p-8">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-white/70">
             <span>🛠️</span>
             <span>Panel admin</span>
@@ -2172,7 +2172,7 @@ useEffect(() => {
                   return (
                     <div
                       key={match.id}
-                      className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl transition hover:bg-white/[0.07] hover:border-white/20"
+                      className="w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl transition hover:bg-white/[0.07] hover:border-white/20 sm:p-5"
                     >
                       <div className="flex flex-col gap-5">
                         <div className="min-w-0 flex flex-col justify-center">
@@ -2180,45 +2180,45 @@ useEffect(() => {
                             {match.kickoff}
                           </p>
 
-                          <div className="mt-4 mx-auto grid w-full max-w-4xl grid-cols-[minmax(260px,1fr)_120px_minmax(260px,1fr)] items-center gap-6">
-                            <div className="flex items-center gap-3">
-                              <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
+                          <div className="mt-4 grid w-full grid-cols-[minmax(0,1fr)_38px_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] sm:gap-4 md:mx-auto md:max-w-4xl md:grid-cols-[1fr_120px_1fr] md:gap-6">
+                            <div className="flex min-w-0 flex-col items-center justify-center gap-2 text-center sm:flex-row sm:justify-start sm:gap-3 sm:text-left">
+                              <div className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10">
                                 <Image
                                   src={match.homeFlagUrl}
                                   alt={match.homeTeam}
                                   width={40}
                                   height={28}
-                                  className="h-8 w-10 object-cover"
+                                  className="h-7 w-9 object-cover sm:h-8 sm:w-10"
                                 />
                               </div>
-                              <div>
-                                <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">
+                              <div className="min-w-0 text-center sm:text-left">
+                                <div className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px]">
                                   {match.homeCode}
                                 </div>
-                                <span className="text-lg font-semibold">{match.homeTeam}</span>
+                                <span className="block max-w-full break-words text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">{match.homeTeam}</span>
                               </div>
                             </div>
 
                             <div className="flex items-center justify-center">
-                              <div className="text-sm uppercase tracking-[0.3em] text-white/35">
+                              <div className="text-xs uppercase tracking-[0.18em] text-white/35 sm:text-sm sm:tracking-[0.3em]">
                                 VS
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-center gap-3">
-                              <div className="text-right">
-                                <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">
+                            <div className="flex min-w-0 flex-col-reverse items-center justify-center gap-2 text-center sm:flex-row sm:justify-end sm:gap-3 sm:text-right">
+                              <div className="min-w-0 text-center sm:text-right">
+                                <div className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px]">
                                   {match.awayCode}
                                 </div>
-                                <span className="text-lg font-semibold">{match.awayTeam}</span>
+                                <span className="block max-w-full break-words text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">{match.awayTeam}</span>
                               </div>
-                              <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
+                              <div className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10">
                                 <Image
                                   src={match.awayFlagUrl}
                                   alt={match.awayTeam}
                                   width={40}
                                   height={28}
-                                  className="h-8 w-10 object-cover"
+                                  className="h-7 w-9 object-cover sm:h-8 sm:w-10"
                                 />
                               </div>
                             </div>
@@ -2226,12 +2226,12 @@ useEffect(() => {
                         </div>
 
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                          <div className="w-full rounded-2xl border border-white/10 bg-black/25 p-4 lg:w-auto">
                             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/45">
                               Resultado oficial
                             </p>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                               <input
                                 type="text"
                                 inputMode="numeric"
@@ -2255,7 +2255,7 @@ useEffect(() => {
                               <button
   onClick={() => saveOfficialResult(match.id)}
   disabled={savingId === match.id}
-                                className={`ml-2 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                                className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                                   savingId === match.id
   ? 'bg-white/10 text-white/40 cursor-not-allowed'
   : 'bg-white text-black hover:bg-white/90'
@@ -2266,12 +2266,12 @@ useEffect(() => {
                             </div>
                           </div>
 
-                          <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                          <div className="w-full rounded-2xl border border-white/10 bg-black/25 p-4 lg:w-auto">
                             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-white/45">
                               Estado del partido
                             </p>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                               <span
                                 className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${
                                   state.isOpen
