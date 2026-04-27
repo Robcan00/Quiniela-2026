@@ -147,7 +147,7 @@ const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
 const GUARANTEED_PRIZE_POOL = 375000
 const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
 const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
-const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&mute=1&playsinline=1&rel=0`
+const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`
 
 function scrollToPageTop() {
   if (typeof window === 'undefined') return
