@@ -2505,14 +2505,17 @@ useEffect(() => {
                             </span>
                           </div>
 
-                          <div className="text-left lg:text-right">
-                            <p className="font-bold text-white">
-                              {formatCurrencyMXN(Number(entry.payment_amount ?? 0))}
-                            </p>
-                            <p className="mt-1 text-xs text-white/45">
-                              {entry.paid_at ? new Date(entry.paid_at).toLocaleDateString('es-MX') : 'Sin fecha'}
-                            </p>
-                          </div>
+                          <div className="flex min-h-[70px] flex-col items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-3 text-center lg:items-end">
+  <p className="text-sm font-bold text-emerald-200">
+    {formatCurrencyMXN(Number(entry.payment_amount ?? 0))}
+  </p>
+
+  <p className="mt-1 text-[11px] text-emerald-200/70 leading-tight">
+    {entry.paid_at
+      ? new Date(entry.paid_at).toLocaleDateString('es-MX')
+      : 'Sin fecha'}
+  </p>
+</div>
 
                           <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
                             <button
