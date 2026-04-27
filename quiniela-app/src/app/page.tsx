@@ -1741,6 +1741,7 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
   const [paymentEntries, setPaymentEntries] = useState<AdminPaymentEntryRow[]>([])
   const [paymentsLoading, setPaymentsLoading] = useState(true)
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'exempt'>('all')
 
   useScrollToPageTop([])
 
@@ -2036,6 +2037,41 @@ useEffect(() => {
       prizePool,
     }
   }, [paymentEntries])
+
+  const filteredPaymentEntries = useMemo(() => {
+    if (paymentFilter === 'all') return paymentEntries
+
+    if (paymentFilter === 'pending') {
+      return paymentEntries.filter(
+        (entry) => !entry.payment_status || entry.payment_status === 'pending' || entry.payment_status === 'partial'
+      )
+    }
+
+    return paymentEntries.filter((entry) => entry.payment_status === paymentFilter)
+  }, [paymentEntries, paymentFilter])
+
+  const paymentFilterOptions = [
+    {
+      key: 'all' as const,
+      label: 'Todas',
+      count: paymentEntries.length,
+    },
+    {
+      key: 'paid' as const,
+      label: 'Pagadas',
+      count: paymentSummary.paidEntries,
+    },
+    {
+      key: 'pending' as const,
+      label: 'Pendientes',
+      count: paymentSummary.pendingEntries + paymentSummary.partialEntries,
+    },
+    {
+      key: 'exempt' as const,
+      label: 'Exentas',
+      count: paymentSummary.exemptEntries,
+    },
+  ]
 
   const updateEntryPayment = async (
     entryId: string,
@@ -2371,7 +2407,7 @@ useEffect(() => {
             </div>
 
             <div className="mt-8">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-yellow-400">
                     Quinielas y pagos
@@ -2381,9 +2417,35 @@ useEffect(() => {
                   </p>
                 </div>
 
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/70">
-                  {paymentEntries.length} quinielas
+                <span className="w-fit rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/70">
+                  {filteredPaymentEntries.length} de {paymentEntries.length} quinielas
                 </span>
+              </div>
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {paymentFilterOptions.map((option) => {
+                  const isActive = paymentFilter === option.key
+
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setPaymentFilter(option.key)}
+                      className={`rounded-2xl border px-4 py-3 text-left transition active:scale-[0.98] ${
+                        isActive
+                          ? 'border-yellow-400/35 bg-yellow-400/15 text-yellow-100 shadow-[0_0_24px_rgba(250,204,21,0.10)]'
+                          : 'border-white/10 bg-black/25 text-white/65 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                        {option.label}
+                      </p>
+                      <p className="mt-1 text-2xl font-black">
+                        {option.count}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
 
               {paymentsLoading ? (
@@ -2393,6 +2455,10 @@ useEffect(() => {
               ) : paymentEntries.length === 0 ? (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-black/25 p-4 text-white/60">
                   Todavía no hay quinielas registradas.
+                </div>
+              ) : filteredPaymentEntries.length === 0 ? (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-black/25 p-4 text-white/60">
+                  No hay quinielas con este filtro.
                 </div>
               ) : (
                 <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
@@ -2405,7 +2471,7 @@ useEffect(() => {
                   </div>
 
                   <div className="divide-y divide-white/10">
-                    {paymentEntries.map((entry) => {
+                    {filteredPaymentEntries.map((entry) => {
                       const isUpdating = updatingPaymentId === entry.id
                       const pendingAmount = Math.max(ENTRY_PRICE - Number(entry.payment_amount ?? 0), 0)
 
