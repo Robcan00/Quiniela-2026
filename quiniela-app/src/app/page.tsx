@@ -1686,7 +1686,7 @@ useEffect(() => {
                 })}
 
                 <div className="mt-6 flex justify-end">
-  <div className="w-[250px]">
+  <div className="w-full max-w-[250px]">
     {saveMessage && (
   <div className="mb-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-center text-sm font-semibold text-emerald-200">
     {saveMessage}
@@ -3253,7 +3253,7 @@ function PublicPicksByParticipantScreen({
     mounted = false
     supabase.removeChannel(channel)
   }
-}, [selectedUserId, canView])
+}, [canView])
 
   const participants = useMemo(() => {
     const map = new Map<
