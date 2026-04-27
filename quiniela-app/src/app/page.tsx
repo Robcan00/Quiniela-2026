@@ -242,6 +242,8 @@ function WhatsAppSupportButton({
   user?: UserState
   activeEntryId?: string | null
 }) {
+  if (user?.role === 'admin') return null
+
   return (
     <a
       href={getWhatsAppLink(user, activeEntryId)}
@@ -2625,7 +2627,6 @@ useEffect(() => {
         </div>
       </div>
     
-<WhatsAppSupportButton />
 
 </main>
   )
@@ -4015,7 +4016,6 @@ const badgeDetail = !hasPrediction
         </div>
       </div>
     
-<WhatsAppSupportButton />
 
 </main>
   )
@@ -5015,7 +5015,6 @@ creatingDefaultEntryRef.current = null
         </div>
       </section>
     
-<WhatsAppSupportButton />
 
 </main>
   )
