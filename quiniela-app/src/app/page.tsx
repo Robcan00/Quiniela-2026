@@ -1795,23 +1795,35 @@ useEffect(() => {
     }
 
     const loadUsers = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, role')
-        .order('full_name', { ascending: true })
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-      if (!mounted) return
+  const token = session?.access_token
 
-      if (error) {
-        console.error('Error cargando usuarios admin:', error.message)
-        setUsers([])
-        setUsersLoading(false)
-        return
-      }
+  if (!token) {
+    setUsers([])
+    return
+  }
 
-      setUsers((data as AdminUserRow[]) ?? [])
-      setUsersLoading(false)
-    }
+  const res = await fetch('/api/admin/users', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!mounted) return
+
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null)
+    console.error('Error cargando usuarios admin:', payload?.error || res.statusText)
+    setUsers([])
+    return
+  }
+
+  const data = await res.json()
+  setUsers([])
+}
 
     const loadPaymentEntries = async () => {
       const { data, error } = await supabase
@@ -4664,23 +4676,38 @@ useEffect(() => {
       if (!mounted) return
 
       if (error) {
-        console.error('Error cargando profile:', error.message)
-        setUser({
-          id: authUser.id,
-          email: authUser.email ?? '',
-          fullName: authUser.email ?? 'Jugador',
-          role: 'player',
-        })
-        return
-      }
+  console.error('Error cargando profile:', error.message)
+
+  const fallbackEmail = (authUser.email ?? '').toLowerCase()
+  const fallbackIsAdmin = fallbackEmail === 'rcantoral@cantoralabogados.com'
+
+  setUser({
+    id: authUser.id,
+    email: authUser.email ?? '',
+    fullName: authUser.email ?? 'Jugador',
+    role: fallbackIsAdmin ? 'admin' : 'player',
+  })
+
+  return
+}
 
       const resolvedEmail = (profile.email ?? authUser.email ?? '').toLowerCase()
 const isForcedAdmin = resolvedEmail === 'rcantoral@cantoralabogados.com'
 
 const storedProfile = getStoredProfile(profile.id)
+
 let resolvedProfile = {
   ...profile,
-  ...(storedProfile ?? {}),
+  ...(storedProfile
+    ? {
+        email: storedProfile.email ?? profile.email,
+        full_name: storedProfile.full_name ?? profile.full_name,
+        first_name: storedProfile.first_name ?? profile.first_name,
+        last_name: storedProfile.last_name ?? profile.last_name,
+        phone: storedProfile.phone ?? profile.phone,
+      }
+    : {}),
+  role: profile.role,
 }
 
 const emailUserName = getEmailUserName(resolvedProfile.email ?? authUser.email)
@@ -4702,7 +4729,7 @@ if (
         first_name: storedProfile.first_name ?? null,
         last_name: storedProfile.last_name ?? null,
         phone: storedProfile.phone ?? null,
-        role: isForcedAdmin ? 'admin' : storedProfile.role ?? profile.role ?? 'player',
+        role: profile.role,
       },
       { onConflict: 'id' }
     )
