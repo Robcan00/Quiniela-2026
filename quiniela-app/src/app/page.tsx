@@ -2098,47 +2098,28 @@ useEffect(() => {
   setDeletingUserId(targetUser.id)
 
   try {
-    const { data: userEntries, error: entriesReadError } = await supabase
-      .from('entries')
-      .select('id')
-      .eq('user_id', targetUser.id)
+    const token = await getSafeAccessToken()
 
-    if (entriesReadError) {
-      alert(`No se pudieron leer las quinielas del usuario: ${entriesReadError.message}`)
+    if (!token) {
+      alert('Tu sesión expiró. Inicia sesión nuevamente.')
       return
     }
 
-    const entryIds = (userEntries ?? []).map((entry) => entry.id)
+    const res = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userId: targetUser.id,
+      }),
+    })
 
-    if (entryIds.length > 0) {
-      const { error: predictionsDeleteError } = await supabase
-        .from('predictions')
-        .delete()
-        .in('entry_id', entryIds)
+    const payload = await res.json().catch(() => null)
 
-      if (predictionsDeleteError) {
-        alert(`No se pudieron borrar los picks del usuario: ${predictionsDeleteError.message}`)
-        return
-      }
-
-      const { error: entriesDeleteError } = await supabase
-        .from('entries')
-        .delete()
-        .eq('user_id', targetUser.id)
-
-      if (entriesDeleteError) {
-        alert(`No se pudieron borrar las quinielas del usuario: ${entriesDeleteError.message}`)
-        return
-      }
-    }
-
-    const { error: profileDeleteError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', targetUser.id)
-
-    if (profileDeleteError) {
-      alert(`No se pudo borrar el usuario: ${profileDeleteError.message}`)
+    if (!res.ok) {
+      alert(payload?.error || 'Error al borrar usuario.')
       return
     }
 
@@ -2694,29 +2675,43 @@ useEffect(() => {
     )
     if (!confirmDelete) return
 
-   const { error: predictionsError } = await supabase
-  .from('predictions')
-  .delete()
-  .eq('entry_id', entry.id)
+   setUpdatingPaymentId(entry.id)
 
-if (predictionsError) {
-  alert('Error al borrar picks de la quiniela: ' + predictionsError.message)
-  return
+try {
+  const token = await getSafeAccessToken()
+
+  if (!token) {
+    alert('Tu sesión expiró. Inicia sesión nuevamente.')
+    return
+  }
+
+  const res = await fetch('/api/admin/delete-entry', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      entryId: entry.id,
+    }),
+  })
+
+  const payload = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    alert(payload?.error || 'Error al borrar quiniela.')
+    return
+  }
+
+  setPaymentEntries((prev) => prev.filter((e) => e.id !== entry.id))
+
+  alert('Quiniela borrada correctamente ✅')
+} catch (err) {
+  console.error('Error borrando quiniela:', err)
+  alert('Error inesperado al borrar quiniela.')
+} finally {
+  setUpdatingPaymentId(null)
 }
-
-const { error: entryError } = await supabase
-  .from('entries')
-  .delete()
-  .eq('id', entry.id)
-
-if (entryError) {
-  alert('Error al borrar quiniela: ' + entryError.message)
-  return
-}
-
-setPaymentEntries((prev) => prev.filter((e) => e.id !== entry.id))
-
-alert('Quiniela borrada correctamente ✅')
   }}
   className="min-h-[52px] min-w-[92px] rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold leading-tight text-red-300 transition hover:bg-red-500/15"
 >
