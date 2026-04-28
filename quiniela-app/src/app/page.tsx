@@ -5694,7 +5694,7 @@ if (view === 'admin') {
   {/* MÓVIL: se conserva el orden con order-* / DESKTOP: se acomoda con md:order-* */}
 
   {/* MI QUINIELA */}
-  <div className={`${user.role === 'admin' ? 'order-2' : 'order-1'} md:order-1`}>
+<div className={`${user.role === 'admin' ? 'order-2' : 'order-1'} md:order-1`}>
     <DashboardCard
       title="Mi Quiniela"
       description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
@@ -5704,7 +5704,7 @@ if (view === 'admin') {
   </div>
 
   {/* TABLA GENERAL */}
-  <div className={`${user.role === 'admin' ? 'order-3' : 'order-4'} md:order-2`}>
+<div className={`${user.role === 'admin' ? 'order-3' : 'order-2'} md:order-2`}>
     <DashboardCard
       title="Tabla general"
       description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
@@ -5714,7 +5714,7 @@ if (view === 'admin') {
   </div>
 
   {/* QUINIELAS POR PARTIDO */}
-  <div className={`${user.role === 'admin' ? 'order-4' : 'order-2'} md:order-3`}>
+  <div className={`${user.role === 'admin' ? 'order-4' : 'order-3'} md:order-3`}>
     <DashboardCard
       title="Ver todas las Quinielas por partido"
       description="Aqui podras ver lo que puso cada quien en su quiniela."
@@ -5724,7 +5724,7 @@ if (view === 'admin') {
   </div>
 
   {/* QUINIELAS POR PARTICIPANTE */}
-  <div className={`${user.role === 'admin' ? 'order-5' : 'order-6'} md:order-4`}>
+  <div className={`${user.role === 'admin' ? 'order-5' : 'order-4'} md:order-4`}>
     <DashboardCard
       title="Ver todas las Quinielas por participante"
       description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
@@ -5734,7 +5734,7 @@ if (view === 'admin') {
   </div>
 
   {/* REGLAMENTO */}
-  <div className={`${user.role === 'admin' ? 'order-7' : 'order-3'} md:order-5`}>
+  <div className={`${user.role === 'admin' ? 'order-7' : 'order-6'} md:order-5`}>
     <DashboardCard
       title="Reglamento Oficial"
       description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
