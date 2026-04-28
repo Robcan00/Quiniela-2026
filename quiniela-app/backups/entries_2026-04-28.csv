@@ -1,0 +1,15 @@
+id,user_id,name,is_active,created_at,payment_status,payment_amount,payment_method,payment_reference,paid_at
+01545b99-b75c-4ddd-988b-38bba2d1c408,874afa56-ee30-4c85-978f-8f464da21d83,Mi quiniela 1,true,2026-04-26 23:59:11.298639+00,pending,0,,,
+19ec1f23-cde1-430c-aa2b-d1544a67ff2f,0d92ea98-51be-4b30-b80c-a6698b76eccb,Mi quiniela 1,true,2026-04-27 21:59:41.500026+00,pending,0,,,
+1cb31d59-6307-4836-b9c6-fbfd77d1e778,83053829-a104-49b7-ae91-c5060617df04,Mi quiniela 1,true,2026-04-25 20:16:27.19434+00,pending,0,,,
+2ee739a5-3342-42c3-a04a-8fedf913160d,bffc22fc-746c-4008-bcd6-d005afcaa933,Mi quiniela 1,true,2026-04-28 01:46:17.065517+00,pending,0,,,
+31ea0b8d-9f42-4297-bc91-2ea163a6a0b7,3c3ab4de-c4cd-44f2-8323-69dc00f9c33f,Mi quiniela 1,true,2026-04-23 19:02:38.161895+00,pending,0,,,
+432da4e2-add1-48d9-93b5-e0dc87843e62,3a5b4e96-b7ab-4ecc-8746-cc841258c5fe,Mi quiniela 1,true,2026-04-28 01:26:52.440537+00,pending,0,,,
+53b44366-529b-437f-84f2-c1534bb81dd9,73c11188-dc7a-46f9-8a5b-1f899e2de33d,Mi quiniela 4,false,2026-04-22 22:29:52.891554+00,pending,0,,,
+5dcf7577-126f-4d6c-968d-21ac2ea02fb7,b7b3baae-63db-4a72-86fe-7e4156c4b477,Mi quiniela 1,true,2026-04-25 22:44:49.158926+00,pending,0,,,
+9600f8ad-b32b-48e2-a1a1-1906046c583e,73c11188-dc7a-46f9-8a5b-1f899e2de33d,Mi quiniela 2,false,2026-04-22 21:56:15.34932+00,paid,2500,stripe,cs_live_a11qPNBCvLXo2apKmVyvx6nfqlpsD7r0v1ZlhifjFzLlzmCIpubYgE2NIE,2026-04-25 01:59:56.956+00
+a4f590fb-00f8-4171-b962-664697d6c6c2,c8134400-62a1-476f-b6dd-4f281aea1958,Mi quiniela 1,true,2026-04-28 03:18:03.614072+00,pending,0,,,
+ab10c676-1dde-4122-a1a9-ba506d44cfd8,85ee1d4d-eff1-4439-9f96-29915af1b19b,Mi quiniela 1,true,2026-04-25 00:12:33.642233+00,pending,0,,,
+b4965e2e-a2c0-4dcd-b399-9a16ebd8eae6,dfef7bfc-c26c-450b-aca5-2c30171ee451,Mi quiniela 1,true,2026-04-23 10:02:32.589501+00,pending,0,,,
+df9fc4f3-7194-4442-b994-627b4de3a9fb,73c11188-dc7a-46f9-8a5b-1f899e2de33d,Mi quiniela 1,true,2026-04-22 21:56:15.235495+00,paid,2500,manual,Marcado manualmente por admin,2026-04-28 06:39:25.293+00
+f7200ecf-af2c-42c7-a2b6-9989046f0382,73c11188-dc7a-46f9-8a5b-1f899e2de33d,Mi quiniela 3,false,2026-04-22 22:29:47.872802+00,paid,2500,manual,Marcado manualmente por admin,2026-04-24 21:57:41.418+00

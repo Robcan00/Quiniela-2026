@@ -1264,14 +1264,22 @@ const isGlobalLock = new Date() >= globalDeadline
       .map(([matchId]) => matchId)
 
     const rowsToUpsert = entries
-      .filter(([, p]) => !(p.homeScore === '' && p.awayScore === ''))
-      .map(([matchId, p]) => ({
-        entry_id: activeEntryId,
-        match_id: matchId,
-        home_score_predicted: p.homeScore === '' ? null : Number(p.homeScore),
-        away_score_predicted: p.awayScore === '' ? null : Number(p.awayScore),
-        is_auto_zero: false,
-      }))
+  .filter(([, p]) => {
+    // SOLO guardar si ambos tienen valor
+    return (
+      p.homeScore !== '' &&
+      p.awayScore !== '' &&
+      !Number.isNaN(Number(p.homeScore)) &&
+      !Number.isNaN(Number(p.awayScore))
+    )
+  })
+  .map(([matchId, p]) => ({
+    entry_id: activeEntryId,
+    match_id: matchId,
+    home_score_predicted: Number(p.homeScore),
+    away_score_predicted: Number(p.awayScore),
+    is_auto_zero: false,
+  }))
 
     if (rowsToDelete.length > 0) {
       const { error: deleteError } = await supabase

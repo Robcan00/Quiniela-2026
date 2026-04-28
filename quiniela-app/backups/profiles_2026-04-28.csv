@@ -1,0 +1,12 @@
+id,email,full_name,role,created_at,first_name,last_name,phone
+0d92ea98-51be-4b30-b80c-a6698b76eccb,juanjose.mariel@hotmail.com,Juan Jose Gutierrez,player,2026-04-27 21:59:39.883009+00,Juan Jose,Gutierrez,7712025039
+3a5b4e96-b7ab-4ecc-8746-cc841258c5fe,lsakjhdas@asd.com,askdlf dslhf,player,2026-04-28 01:26:52.209415+00,askdlf,dslhf,sadasdf
+3c3ab4de-c4cd-44f2-8323-69dc00f9c33f,dirgeneral@sacm.org.mx,dirgeneral,player,2026-04-23 19:02:26.106067+00,,,
+73c11188-dc7a-46f9-8a5b-1f899e2de33d,rcantoral@cantoralabogados.com,Roberto Carlos Cantoral Ramos,admin,2026-04-22 20:36:47.507968+00,Roberto Carlos,Cantoral Ramos,5529153019
+83053829-a104-49b7-ae91-c5060617df04,itaticr11@gmail.com,Itati Cantoral Ramos,player,2026-04-25 20:16:26.815131+00,Itati,Cantoral Ramos,5630823298
+85ee1d4d-eff1-4439-9f96-29915af1b19b,greys_pat@hotmail.com,Greys Bejjani,player,2026-04-25 00:12:33.378055+00,Greys,Bejjani,5585418685
+874afa56-ee30-4c85-978f-8f464da21d83,fabregaped@gmail.com,Pedro Fabrega,player,2026-04-26 23:59:11.092843+00,Pedro,Fabrega,5530176666
+b7b3baae-63db-4a72-86fe-7e4156c4b477,arturocortesr@hotmail.com,Arturo Cortes,player,2026-04-25 22:44:48.930753+00,Arturo,Cortes,5527025122
+bffc22fc-746c-4008-bcd6-d005afcaa933,pbicaza@msn.com,Pedro Bejarano,player,2026-04-28 01:46:16.761628+00,Pedro,Bejarano,5514516075
+c8134400-62a1-476f-b6dd-4f281aea1958,castanedogustavo63@gmail.com,Gustavo Castanedo viveros,player,2026-04-28 03:18:03.088156+00,Gustavo,Castanedo viveros,4921464592
+dfef7bfc-c26c-450b-aca5-2c30171ee451,cantoral_00@icloud.com,Roberto Prueba Cantoral Ramos,player,2026-04-23 10:02:23.573117+00,Roberto Prueba,Cantoral Ramos,5529153019
