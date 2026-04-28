@@ -1,22 +1,32 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
-// Validar que las variables de entorno existan
-if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-  throw new Error('Faltan variables de entorno de Upstash Redis para Rate Limiting')
-}
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN
 
-export const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(100, '1 m'), // 100 requests/minuto
-  analytics: true,
-  prefix: 'ratelimit',
-})
+export const rateLimitEnabled = Boolean(redisUrl && redisToken)
 
-// Rate limit más estricto para operaciones sensibles
-export const strictRatelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(10, '1 m'), // 10 requests/minuto
-  analytics: true,
-  prefix: 'strict-ratelimit',
-})
+const redis = rateLimitEnabled
+  ? new Redis({
+      url: redisUrl!,
+      token: redisToken!,
+    })
+  : null
+
+export const ratelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(100, '1 m'),
+      analytics: true,
+      prefix: 'ratelimit',
+    })
+  : null
+
+export const strictRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, '1 m'),
+      analytics: true,
+      prefix: 'strict-ratelimit',
+    })
+  : null
