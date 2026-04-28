@@ -9,38 +9,48 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    // 1️⃣ Rate Limiting por IP
-    const ip = request.headers.get('x-forwarded-for') || 
-               request.headers.get('x-real-ip') || 
-               'anonymous'
-    
-    const { success, limit, remaining, reset } = await ratelimit.limit(`leaderboard:${ip}`)
-    
-    if (!success) {
-      return NextResponse.json(
-        { 
-          error: 'Demasiadas solicitudes. Intenta más tarde.',
-          retryAfter: reset ? Math.ceil((reset - Date.now()) / 1000) : 60
-        },
-        { 
-          status: 429,
-          headers: {
-            'Retry-After': reset ? String(Math.ceil((reset - Date.now()) / 1000)) : '60',
-            'X-RateLimit-Limit': String(limit),
-            'X-RateLimit-Remaining': String(remaining),
+    let remaining = 999
+
+    const ip =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'anonymous'
+
+    if (ratelimit) {
+      const result = await ratelimit.limit(`leaderboard:${ip}`)
+      remaining = result.remaining
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            error: 'Demasiadas solicitudes. Intenta más tarde.',
+            retryAfter: result.reset
+              ? Math.ceil((result.reset - Date.now()) / 1000)
+              : 60,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': result.reset
+                ? String(Math.ceil((result.reset - Date.now()) / 1000))
+                : '60',
+              'X-RateLimit-Limit': String(result.limit),
+              'X-RateLimit-Remaining': String(result.remaining),
+            },
           }
-        }
-      )
+        )
+      }
     }
 
-    // 2️⃣ Traer leaderboard de forma segura
     const { data, error } = await supabase
       .from('leaderboard')
-      .select('entry_id, user_id, entry_name, full_name, total_points, exact_hits, outcome_hits, goal_diff')
+      .select(
+        'entry_id, user_id, entry_name, full_name, total_points, exact_hits, outcome_hits, goal_diff'
+      )
       .order('total_points', { ascending: false })
       .order('exact_hits', { ascending: false })
       .order('goal_diff', { ascending: true })
-      .limit(500) // ← Limitar resultados
+      .limit(500)
 
     if (error) {
       console.error('Error en leaderboard:', error.message)
@@ -50,12 +60,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 3️⃣ Response con headers de cache
     return NextResponse.json(data ?? [], {
       headers: {
-        'Cache-Control': 'public, max-age=60, s-maxage=60', // Cache 60s
+        'Cache-Control': 'public, max-age=60, s-maxage=60',
         'X-RateLimit-Remaining': String(remaining),
-      }
+      },
     })
   } catch (err) {
     console.error('Error en API leaderboard:', err)
