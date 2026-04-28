@@ -1020,6 +1020,7 @@ function PicksScreen({
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
   const [autoSaving, setAutoSaving] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 const didUserEditRef = useRef(false)
   const [officialResults, setOfficialResults] = useState<Record<string, OfficialResult>>({})
@@ -1472,62 +1473,73 @@ useEffect(() => {
     </p>
   </div>
 ) : (
-  <button
-    type="button"
-    onClick={async () => {
+<button
+  type="button"
+  onClick={async () => {
+    if (checkoutLoading) return
+
+    setCheckoutLoading(true)
+
+    try {
       if (!activeEntryId) {
         alert('No se pudo identificar tu quiniela activa.')
         return
       }
 
-      try {
-        // Obtener token de sesión para autenticación
-        const token = await getSafeAccessToken()
+      // Obtener token de sesión para autenticación
+      const token = await getSafeAccessToken()
 
-        if (!token) {
-          alert('Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente.')
-          return
-        }
-
-        const res = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            entryId: activeEntryId,
-            userEmail: user?.email,
-          }),
-        })
-
-        let data: any = {}
-
-        try {
-          data = await res.json()
-        } catch {
-          data = {}
-        }
-
-        if (!res.ok || !data.url) {
-          alert(
-            data.error ||
-              data.message ||
-              `Error iniciando el pago. Código: ${res.status}`
-          )
-          return
-        }
-
-        window.location.href = data.url
-      } catch (error) {
-        console.error('Error iniciando el pago:', error)
-        alert('Error iniciando el pago. Revisa la terminal del servidor.')
+      if (!token) {
+        alert('Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente.')
+        return
       }
-    }}
-    className="mt-5 w-full rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 px-6 py-4 text-base font-black text-black shadow-[0_0_28px_rgba(250,204,21,0.22)] transition hover:scale-[1.01] active:scale-[0.99] md:text-lg"
-  >
-    💳 Pagar mi quiniela
-  </button>
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          entryId: activeEntryId,
+          userEmail: user?.email,
+        }),
+      })
+
+      let data: any = {}
+
+      try {
+        data = await res.json()
+      } catch {
+        data = {}
+      }
+
+      if (!res.ok || !data.url) {
+        alert(
+          data.error ||
+            data.message ||
+            `Error iniciando el pago. Código: ${res.status}`
+        )
+        return
+      }
+
+      window.location.href = data.url
+    } catch (error) {
+      console.error('Error iniciando el pago:', error)
+      alert('Error iniciando el pago. Revisa la terminal del servidor.')
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }}
+  disabled={checkoutLoading}
+  className={`mt-5 w-full rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 px-6 py-4 text-base font-black text-black shadow-[0_0_28px_rgba(250,204,21,0.22)] transition active:scale-[0.99] md:text-lg ${
+    checkoutLoading
+      ? 'cursor-not-allowed opacity-70'
+      : 'hover:scale-[1.01]'
+  }`}
+>
+  {checkoutLoading ? 'Redirigiendo a pago...' : '💳 Pagar mi quiniela'}
+</button>
 )}
 </div>
 
