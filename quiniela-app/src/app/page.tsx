@@ -217,6 +217,45 @@ function storeProfile(userId: string, profile: Partial<ParticipantProfileRow>) {
 }
 
 
+async function getSafeAuthSession() {
+  try {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession()
+
+    if (session?.user && session?.access_token) {
+      return session
+    }
+
+    if (error) {
+      console.warn('No se pudo obtener la sesión actual:', error.message)
+    }
+
+    const {
+      data: { session: refreshedSession },
+      error: refreshError,
+    } = await supabase.auth.refreshSession()
+
+    if (refreshError) {
+      console.warn('No se pudo refrescar la sesión:', refreshError.message)
+      return null
+    }
+
+    return refreshedSession ?? null
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Error desconocido'
+    console.warn('Sesión inválida o expirada:', message)
+    return null
+  }
+}
+
+async function getSafeAccessToken() {
+  const session = await getSafeAuthSession()
+  return session?.access_token ?? null
+}
+
+
 
 function getWhatsAppLink(user?: UserState, activeEntryId?: string | null) {
   const base = 'https://wa.me/17542991555'
@@ -1435,11 +1474,10 @@ useEffect(() => {
 
       try {
         // Obtener token de sesión para autenticación
-        const { data: { session } } = await supabase.auth.getSession()
-        const token = session?.access_token
+        const token = await getSafeAccessToken()
 
         if (!token) {
-          alert('Tu sesión ha expirado. Por favor, recarga la página.')
+          alert('Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente.')
           return
         }
 
@@ -1794,76 +1832,98 @@ useEffect(() => {
       setMatchStates(stateMap)
     }
 
-    const loadUsers = async () => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+   const loadUsers = async () => {
+  setUsersLoading(true)
 
-  const token = session?.access_token
+  const token = await getSafeAccessToken()
 
   if (!token) {
+    if (!mounted) return
     setUsers([])
+    setUsersLoading(false)
     return
   }
 
-  const res = await fetch('/api/admin/users', {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  try {
+    const res = await fetch('/api/admin/users', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
-  if (!mounted) return
+    if (!mounted) return
 
-  if (!res.ok) {
-    const payload = await res.json().catch(() => null)
-    console.error('Error cargando usuarios admin:', payload?.error || res.statusText)
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      console.error('Error cargando usuarios admin:', payload?.error || res.statusText)
+      setUsers([])
+      setUsersLoading(false)
+      return
+    }
+
+    const data = await res.json()
+
+    if (!mounted) return
+    setUsers(Array.isArray(data) ? data : data?.users ?? [])
+    setUsersLoading(false)
+  } catch (err) {
+    console.error('Error cargando usuarios admin:', err)
+    if (!mounted) return
     setUsers([])
-    return
+    setUsersLoading(false)
   }
-
-  const data = await res.json()
-  setUsers([])
 }
 
     const loadPaymentEntries = async () => {
-      const { data, error } = await supabase
-        .from('entries')
-        .select(`
-          id,
-          name,
-          user_id,
-          payment_status,
-          payment_amount,
-          payment_method,
-          payment_reference,
-          paid_at,
-          profiles (
-            full_name,
-            email,
-            phone
-          )
-        `)
-        .order('user_id', { ascending: true })
-        .order('name', { ascending: true })
+  setPaymentsLoading(true)
 
-      if (!mounted) return
+  const token = await getSafeAccessToken()
 
-      if (error) {
-        console.error('Error cargando pagos:', error.message)
-        setPaymentEntries([])
-        setPaymentsLoading(false)
-        return
-      }
+  if (!token) {
+    if (!mounted) return
+    setPaymentEntries([])
+    setPaymentsLoading(false)
+    return
+  }
 
-      setPaymentEntries(((data ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
-        const nameA = a.profiles?.full_name || a.profiles?.email || 'Participante'
-        const nameB = b.profiles?.full_name || b.profiles?.email || 'Participante'
-        const byName = nameA.localeCompare(nameB, 'es', { sensitivity: 'base' })
-        if (byName !== 0) return byName
-        return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-      }))
+  try {
+    const res = await fetch('/api/admin/payments', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!mounted) return
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      console.error('Error cargando pagos admin:', payload?.error || res.statusText)
+      setPaymentEntries([])
       setPaymentsLoading(false)
+      return
     }
+
+    const data = await res.json()
+    const rows = Array.isArray(data) ? data : data?.entries ?? []
+
+    if (!mounted) return
+
+    setPaymentEntries(((rows ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
+      const nameA = a.profiles?.full_name || a.profiles?.email || 'Participante'
+      const nameB = b.profiles?.full_name || b.profiles?.email || 'Participante'
+      const byName = nameA.localeCompare(nameB, 'es', { sensitivity: 'base' })
+      if (byName !== 0) return byName
+      return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    }))
+
+    setPaymentsLoading(false)
+  } catch (err) {
+    console.error('Error cargando pagos admin:', err)
+    if (!mounted) return
+    setPaymentEntries([])
+    setPaymentsLoading(false)
+  }
+}
 
     loadMatchesMeta()
     loadUsers()
@@ -4654,9 +4714,7 @@ useEffect(() => {
     let mounted = true
 
     const loadUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const session = await getSafeAuthSession()
 
       if (!mounted) return
 
