@@ -2086,33 +2086,73 @@ useEffect(() => {
     alert(hasFullResult ? 'Resultado oficial guardado ✅' : 'Resultado borrado y partido reabierto ✅')
   }
 
-  const handleDeleteUser = async (targetUser: AdminUserRow) => {
-    const label = targetUser.full_name || targetUser.email || 'este participante'
+ const handleDeleteUser = async (targetUser: AdminUserRow) => {
+  const label = targetUser.full_name || targetUser.email || 'este participante'
 
-    const confirmed = window.confirm(
-      `¿Seguro que quieres borrar a ${label}? Esto eliminará también sus quinielas y picks.`
-    )
+  const confirmed = window.confirm(
+    `¿Seguro que quieres borrar a ${label}? Esto eliminará también TODAS sus quinielas y picks.`
+  )
 
-    if (!confirmed) return
+  if (!confirmed) return
 
-    setDeletingUserId(targetUser.id)
+  setDeletingUserId(targetUser.id)
 
-    const { error } = await supabase
+  try {
+    const { data: userEntries, error: entriesReadError } = await supabase
+      .from('entries')
+      .select('id')
+      .eq('user_id', targetUser.id)
+
+    if (entriesReadError) {
+      alert(`No se pudieron leer las quinielas del usuario: ${entriesReadError.message}`)
+      return
+    }
+
+    const entryIds = (userEntries ?? []).map((entry) => entry.id)
+
+    if (entryIds.length > 0) {
+      const { error: predictionsDeleteError } = await supabase
+        .from('predictions')
+        .delete()
+        .in('entry_id', entryIds)
+
+      if (predictionsDeleteError) {
+        alert(`No se pudieron borrar los picks del usuario: ${predictionsDeleteError.message}`)
+        return
+      }
+
+      const { error: entriesDeleteError } = await supabase
+        .from('entries')
+        .delete()
+        .eq('user_id', targetUser.id)
+
+      if (entriesDeleteError) {
+        alert(`No se pudieron borrar las quinielas del usuario: ${entriesDeleteError.message}`)
+        return
+      }
+    }
+
+    const { error: profileDeleteError } = await supabase
       .from('profiles')
       .delete()
       .eq('id', targetUser.id)
 
-    setDeletingUserId(null)
-
-    if (error) {
-      alert(`No se pudo borrar el usuario: ${error.message}`)
+    if (profileDeleteError) {
+      alert(`No se pudo borrar el usuario: ${profileDeleteError.message}`)
       return
     }
 
     setUsers((prev) => prev.filter((u) => u.id !== targetUser.id))
-    alert('Participante eliminado correctamente ✅')
-  }
+    setPaymentEntries((prev) => prev.filter((entry) => entry.user_id !== targetUser.id))
 
+    alert('Participante, quinielas y picks eliminados correctamente ✅')
+  } catch (err) {
+    console.error('Error borrando usuario completo:', err)
+    alert('Error inesperado al borrar usuario.')
+  } finally {
+    setDeletingUserId(null)
+  }
+}
 
   const paymentSummary = useMemo(() => {
     const totalEntries = paymentEntries.length
