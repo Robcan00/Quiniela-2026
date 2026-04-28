@@ -2865,34 +2865,30 @@ function PublicPicksScreen({
   let mounted = true
 
   const load = async () => {
-    const [{ data: picksData, error: picksError }, { data: matchesData, error: matchesError }] =
-      await Promise.all([
-        supabase
-          .from('predictions')
-          .select(`
-            match_id,
-            home_score_predicted,
-            away_score_predicted,
-            entries (
-              id,
-              name,
-              user_id,
-              profiles (
-                full_name,
-                email
-              )
-            )
-          `),
-        supabase
-          .from('matches')
-          .select('id, home_score, away_score, is_open, is_finished')
-          .in('id', MATCHES.map((match) => match.id)),
-      ])
+    setLoading(true)
+
+    const token = await getSafeAccessToken()
+
+    const [picksRes, { data: matchesData, error: matchesError }] = await Promise.all([
+      fetch('/api/public/picks', {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
+      }),
+      supabase
+        .from('matches')
+        .select('id, home_score, away_score, is_open, is_finished')
+        .in('id', MATCHES.map((match) => match.id)),
+    ])
 
     if (!mounted) return
 
-    if (picksError) {
-      console.error(picksError.message)
+    if (!picksRes.ok) {
+      const payload = await picksRes.json().catch(() => null)
+      console.error('Error cargando picks públicos:', payload?.error || picksRes.statusText)
+      setRows([])
       setLoading(false)
       return
     }
@@ -2901,6 +2897,7 @@ function PublicPicksScreen({
       console.error(matchesError.message)
     }
 
+    const picksData = await picksRes.json()
     const matchMetaMap: Record<string, PublicMatchMetaRow> = {}
 
     ;((matchesData ?? []) as PublicMatchMetaRow[]).forEach((matchRow) => {
@@ -3274,28 +3271,29 @@ function PublicPicksByParticipantScreen({
   let mounted = true
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from('entries')
-      .select(`
-        id,
-        name,
-        user_id,
-        profiles (
-          full_name,
-          email
-        )
-      `)
-      .order('user_id', { ascending: true })
-      .order('name', { ascending: true })
+    setLoading(true)
+
+    const token = await getSafeAccessToken()
+
+    const res = await fetch('/api/public/entries', {
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {},
+    })
 
     if (!mounted) return
 
-    if (error) {
-      console.error('Error cargando quinielas por participante:', error.message)
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      console.error('Error cargando quinielas por participante:', payload?.error || res.statusText)
       setRows([])
       setLoading(false)
       return
     }
+
+    const data = await res.json()
 
     const safeRows = ((data ?? []) as PublicEntryRow[]).sort((a, b) => {
       const nameA =
@@ -3749,44 +3747,36 @@ function EntryDetailScreen({
     const loadAll = async () => {
       setLoading(true)
 
-      const [{ data: entryData, error: entryError }, { data: picksData, error: picksError }, { data: matchesData, error: matchesError }] =
-        await Promise.all([
-          supabase
-            .from('entries')
-            .select(`
-              id,
-              name,
-              user_id,
-              profiles (
-                full_name,
-                email
-              )
-            `)
-            .eq('id', entryId)
-            .single(),
-          supabase
-            .from('predictions')
-            .select('match_id, home_score_predicted, away_score_predicted')
-            .eq('entry_id', entryId),
-          supabase
-            .from('matches')
-            .select('id, home_score, away_score, is_open, is_finished')
-            .in('id', MATCHES.map((match) => match.id)),
-        ])
+      const token = await getSafeAccessToken()
+
+      const [detailRes, { data: matchesData, error: matchesError }] = await Promise.all([
+        fetch(`/api/public/entry-detail?entryId=${encodeURIComponent(entryId)}`, {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        }),
+        supabase
+          .from('matches')
+          .select('id, home_score, away_score, is_open, is_finished')
+          .in('id', MATCHES.map((match) => match.id)),
+      ])
 
       if (!mounted) return
 
-      if (entryError) {
-        console.error('Error cargando detalle de quiniela:', entryError.message)
+      if (!detailRes.ok) {
+        const payload = await detailRes.json().catch(() => null)
+        console.error('Error cargando detalle de quiniela:', payload?.error || detailRes.statusText)
         setEntryInfo(null)
-      } else {
-        setEntryInfo((entryData as EntryDetailInfo) ?? null)
-      }
-
-      if (picksError) {
-        console.error('Error cargando predictions de la quiniela:', picksError.message)
         setPredictionsMap({})
       } else {
+        const detailData = await detailRes.json()
+        const entryData = detailData?.entry ?? null
+        const picksData = detailData?.predictions ?? []
+
+        setEntryInfo((entryData as EntryDetailInfo) ?? null)
+
         const formatted: Record<string, Prediction> = {}
 
         ;((picksData ?? []) as EntryPredictionRow[]).forEach((row) => {
@@ -5701,6 +5691,69 @@ if (view === 'admin') {
 )}
 
        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
+  {/* MÓVIL: se conserva el orden con order-* / DESKTOP: se acomoda con md:order-* */}
+
+  {/* MI QUINIELA */}
+  <div className={`${user.role === 'admin' ? 'order-2' : 'order-1'} md:order-1`}>
+    <DashboardCard
+      title="Mi Quiniela"
+      description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
+      badge="Jugador"
+      onClick={() => openView('picks')}
+    />
+  </div>
+
+  {/* TABLA GENERAL */}
+  <div className={`${user.role === 'admin' ? 'order-3' : 'order-4'} md:order-2`}>
+    <DashboardCard
+      title="Tabla general"
+      description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
+      badge="Ranking"
+      onClick={() => openView('leaderboard')}
+    />
+  </div>
+
+  {/* QUINIELAS POR PARTIDO */}
+  <div className={`${user.role === 'admin' ? 'order-4' : 'order-2'} md:order-3`}>
+    <DashboardCard
+      title="Ver todas las Quinielas por partido"
+      description="Aqui podras ver lo que puso cada quien en su quiniela."
+      badge="Público"
+      onClick={() => openView('public')}
+    />
+  </div>
+
+  {/* QUINIELAS POR PARTICIPANTE */}
+  <div className={`${user.role === 'admin' ? 'order-5' : 'order-6'} md:order-4`}>
+    <DashboardCard
+      title="Ver todas las Quinielas por participante"
+      description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
+      badge="Público"
+      onClick={() => openView('public-by-participant')}
+    />
+  </div>
+
+  {/* REGLAMENTO */}
+  <div className={`${user.role === 'admin' ? 'order-7' : 'order-3'} md:order-5`}>
+    <DashboardCard
+      title="Reglamento Oficial"
+      description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
+      badge="Info"
+      onClick={() => router.push('/rules')}
+    />
+  </div>
+
+  {/* DATOS DEL PARTICIPANTE */}
+  <div className={`${user.role === 'admin' ? 'order-6' : 'order-5'} md:order-6`}>
+    <DashboardCard
+      title="Datos del Participante"
+      description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
+      badge="Perfil"
+      onClick={() => openView('participant-data')}
+    />
+  </div>
+
+  {/* PANEL ADMIN */}
   {user.role === 'admin' && (
     <div className="order-1 md:order-7 md:col-span-2">
       <DashboardCard
@@ -5711,56 +5764,6 @@ if (view === 'admin') {
       />
     </div>
   )}
-
-  {/* IZQUIERDA 1 */}
-  <div className={`${user.role === 'admin' ? 'order-2' : 'order-1'} md:order-1 md:contents`}>
-    <DashboardCard
-      title="Mi Quiniela"
-      description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
-      badge="Jugador"
-      onClick={() => openView('picks')}
-    />
-  </div>
-
-  {/* DERECHA 1 */}
-  <div className={`${user.role === 'admin' ? 'order-3' : 'order-4'} md:order-2 md:contents`}>
-    <DashboardCard
-      title="Tabla general"
-      description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
-      badge="Ranking"
-      onClick={() => openView('leaderboard')}
-    />
-  </div>
-
-  {/* IZQUIERDA 2 */}
-  <div className={`${user.role === 'admin' ? 'order-4' : 'order-2'} md:order-3 md:contents`}>
-    <DashboardCard
-      title="Ver todas las Quinielas por partido"
-      description="Aqui podras ver lo que puso cada quien en su quiniela."
-      badge="Público"
-      onClick={() => openView('public')}
-    />
-  </div>
-
-  {/* DERECHA 2 */}
-  <div className={`${user.role === 'admin' ? 'order-6' : 'order-5'} md:order-4 md:contents`}>
-    <DashboardCard
-      title="Datos del Participante"
-      description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
-      badge="Perfil"
-      onClick={() => openView('participant-data')}
-    />
-  </div>
-
-  {/* IZQUIERDA 3 */}
-  <div className={`${user.role === 'admin' ? 'order-7' : 'order-3'} md:order-5 md:contents`}>
-    <DashboardCard
-      title="Reglamento Oficial"
-      description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
-      badge="Info"
-      onClick={() => router.push('/rules')}
-    />
-  </div>
 
   {/* TUTORIAL SOLO ADMIN */}
   {user.role === 'admin' && (
@@ -5774,17 +5777,6 @@ if (view === 'admin') {
       </button>
     </div>
   )}
-
-  {/* DERECHA 3 */}
-  <div className={`${user.role === 'admin' ? 'order-5' : 'order-6'} md:order-6 md:contents`}>
-    <DashboardCard
-      title="Ver todas las Quinielas por participante"
-      description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
-      badge="Público"
-      onClick={() => openView('public-by-participant')}
-    />
-  </div>
-
 </section>
       </div>
     
