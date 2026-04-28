@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('leaderboard')
       .select(
-        'entry_id, user_id, entry_name, full_name, total_points, exact_hits, outcome_hits, goal_diff'
-      )
+  'entry_name, full_name, total_points, exact_hits, outcome_hits, goal_diff'
+)
       .order('total_points', { ascending: false })
       .order('exact_hits', { ascending: false })
       .order('goal_diff', { ascending: true })
