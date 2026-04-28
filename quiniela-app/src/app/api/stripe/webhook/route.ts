@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
-  const stripeSecretKey = process.env.APP_STRIPE_SECRET_KEY
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
   if (!stripeSecretKey || !webhookSecret) {
