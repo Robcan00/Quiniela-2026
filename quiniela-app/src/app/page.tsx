@@ -2694,21 +2694,29 @@ useEffect(() => {
     )
     if (!confirmDelete) return
 
-    // borrar predictions primero (seguro)
-    await supabase.from('predictions').delete().eq('entry_id', entry.id)
+   const { error: predictionsError } = await supabase
+  .from('predictions')
+  .delete()
+  .eq('entry_id', entry.id)
 
-    const { error } = await supabase
-      .from('entries')
-      .delete()
-      .eq('id', entry.id)
+if (predictionsError) {
+  alert('Error al borrar picks de la quiniela: ' + predictionsError.message)
+  return
+}
 
-    if (error) {
-      alert('Error al borrar quiniela: ' + error.message)
-      return
-    }
+const { error: entryError } = await supabase
+  .from('entries')
+  .delete()
+  .eq('id', entry.id)
 
-    // refrescar UI
-    setPaymentEntries((prev) => prev.filter((e) => e.id !== entry.id))
+if (entryError) {
+  alert('Error al borrar quiniela: ' + entryError.message)
+  return
+}
+
+setPaymentEntries((prev) => prev.filter((e) => e.id !== entry.id))
+
+alert('Quiniela borrada correctamente ✅')
   }}
   className="min-h-[52px] min-w-[92px] rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold leading-tight text-red-300 transition hover:bg-red-500/15"
 >
