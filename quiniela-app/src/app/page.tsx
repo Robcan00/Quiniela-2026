@@ -139,12 +139,39 @@ type PersonalRankInfo = {
   outcome_hits: number
 }
 
+type FinanceSummary = {
+  totalEntries: number
+  paidEntries: number
+  pendingEntries: number
+  exemptEntries: number
+  totalCollected: number
+  mercadopagoCollected: number
+  adminFees: number
+  prizeContribution: number
+  prizePool: number
+  guaranteedPrizePool: number
+  expectedTotal: number
+  approvedPaymentsCount: number
+  recentPayments: Array<{
+    id: string
+    entry_id: string | null
+    user_id: string | null
+    provider: string
+    provider_payment_id: string
+    status: string
+    amount: number
+    currency: string
+    payment_method: string | null
+    created_at: string
+  }>
+}
+
 const MATCHES: Match[] = groupStageMatches
 const PUBLIC_REVEAL_DATE = new Date('2026-06-11T10:00:00-06:00')
 const ENTRY_PRICE = 2500
 const ADMIN_FEE_PER_ENTRY = 200
 const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
-const GUARANTEED_PRIZE_POOL = 375000
+const GUARANTEED_PRIZE_POOL = 300000
 const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
 const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
 const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`
@@ -1861,6 +1888,8 @@ function AdminScreen({ onBack }: { onBack: () => void }) {
   const [paymentsLoading, setPaymentsLoading] = useState(true)
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'exempt'>('all')
+const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null)
+const [financeLoading, setFinanceLoading] = useState(true)
 
   useScrollToPageTop([])
 
@@ -1995,9 +2024,67 @@ useEffect(() => {
   }
 }
 
+
+    const loadFinanceSummary = async () => {
+  setFinanceLoading(true)
+
+  const token = await getSafeAccessToken()
+
+  if (!token) {
+    if (!mounted) return
+    setFinanceSummary(null)
+    setFinanceLoading(false)
+    return
+  }
+
+  try {
+    const res = await fetch('/api/admin/payments-summary', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!mounted) return
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      const errorDebug = {
+  status: res.status,
+  statusText: res.statusText,
+  payload,
+}
+
+console.error(
+  'Error cargando dashboard financiero:',
+  JSON.stringify(errorDebug, null, 2)
+)
+
+alert(`Error dashboard financiero:
+status: ${res.status}
+statusText: ${res.statusText}
+payload: ${JSON.stringify(payload)}`)
+      setFinanceSummary(null)
+      setFinanceLoading(false)
+      return
+    }
+
+    const data = await res.json()
+
+    if (!mounted) return
+    setFinanceSummary(data as FinanceSummary)
+    setFinanceLoading(false)
+  } catch (err) {
+    console.error('Error cargando dashboard financiero:', err)
+    if (!mounted) return
+    setFinanceSummary(null)
+    setFinanceLoading(false)
+  }
+}
+
     loadMatchesMeta()
     loadUsers()
     loadPaymentEntries()
+    loadFinanceSummary()
 
     const channel = supabase
       .channel('admin-matches-live')
@@ -2012,12 +2099,21 @@ useEffect(() => {
         () => {
           loadUsers()
           loadPaymentEntries()
+          loadFinanceSummary()
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'entries' },
-        loadPaymentEntries
+        () => {
+          loadPaymentEntries()
+          loadFinanceSummary()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments' },
+        loadFinanceSummary
       )
       .subscribe()
 
@@ -2247,64 +2343,119 @@ useEffect(() => {
     },
   ]
 
-  const updateEntryPayment = async (
-    entryId: string,
-    updates: Partial<AdminPaymentEntryRow>
-  ) => {
-    setUpdatingPaymentId(entryId)
+  const refreshAdminPaymentData = async () => {
+    const token = await getSafeAccessToken()
 
-    const { error } = await supabase
-      .from('entries')
-      .update(updates)
-      .eq('id', entryId)
-
-    setUpdatingPaymentId(null)
-
-    if (error) {
-      alert(`No se pudo actualizar el pago: ${error.message}`)
+    if (!token) {
+      setPaymentEntries([])
+      setFinanceSummary(null)
       return
     }
 
-    setPaymentEntries((prev) =>
-      prev.map((entry) =>
-        entry.id === entryId
-          ? {
-              ...entry,
-              ...updates,
-            }
-          : entry
+    const [paymentsRes, financeRes] = await Promise.all([
+      fetch('/api/admin/payments', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+      fetch('/api/admin/payments-summary', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    ])
+
+    if (paymentsRes.ok) {
+      const paymentsData = await paymentsRes.json().catch(() => null)
+      const rows = Array.isArray(paymentsData) ? paymentsData : paymentsData?.entries ?? []
+
+      setPaymentEntries(((rows ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
+        const nameA = a.profiles?.full_name || a.profiles?.email || 'Participante'
+        const nameB = b.profiles?.full_name || b.profiles?.email || 'Participante'
+        const byName = nameA.localeCompare(nameB, 'es', { sensitivity: 'base' })
+        if (byName !== 0) return byName
+        return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+      }))
+    } else {
+      const payload = await paymentsRes.json().catch(() => null)
+      console.error('Error refrescando pagos admin:', payload?.error || paymentsRes.statusText)
+    }
+
+    if (financeRes.ok) {
+      const financeData = await financeRes.json().catch(() => null)
+      setFinanceSummary(financeData as FinanceSummary)
+    } else {
+      const payload = await financeRes.json().catch(() => null)
+      console.error('Error refrescando dashboard financiero:', payload?.error || financeRes.statusText)
+    }
+  }
+
+  const updateEntryPayment = async (
+    entryId: string,
+    paymentStatus: 'paid' | 'pending' | 'exempt'
+  ) => {
+    setUpdatingPaymentId(entryId)
+
+    try {
+      const token = await getSafeAccessToken()
+
+      if (!token) {
+        alert('Tu sesión expiró. Inicia sesión nuevamente.')
+        return
+      }
+
+      const res = await fetch('/api/admin/update-entry-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          entryId,
+          paymentStatus,
+        }),
+      })
+
+      const payload = await res.json().catch(() => null)
+
+      if (!res.ok || !payload?.success) {
+        alert(payload?.error || 'No se pudo actualizar el pago.')
+        return
+      }
+
+      const updatedEntry = payload.entry as AdminPaymentEntryRow
+
+      setPaymentEntries((prev) =>
+        prev.map((entry) =>
+          entry.id === entryId
+            ? {
+                ...entry,
+                ...updatedEntry,
+                profiles: entry.profiles,
+              }
+            : entry
+        )
       )
-    )
+
+      await refreshAdminPaymentData()
+    } catch (err) {
+      console.error('Error actualizando pago:', err)
+      alert('Error inesperado al actualizar el pago.')
+    } finally {
+      setUpdatingPaymentId(null)
+    }
   }
 
   const markEntryAsPaid = async (entryId: string) => {
-    await updateEntryPayment(entryId, {
-      payment_status: 'paid',
-      payment_amount: ENTRY_PRICE,
-      payment_method: 'manual',
-      payment_reference: 'Marcado manualmente por admin',
-      paid_at: new Date().toISOString(),
-    })
+    await updateEntryPayment(entryId, 'paid')
   }
 
   const markEntryAsPending = async (entryId: string) => {
-    await updateEntryPayment(entryId, {
-      payment_status: 'pending',
-      payment_amount: 0,
-      payment_method: null,
-      payment_reference: null,
-      paid_at: null,
-    })
+    await updateEntryPayment(entryId, 'pending')
   }
 
   const markEntryAsExempt = async (entryId: string) => {
-    await updateEntryPayment(entryId, {
-      payment_status: 'exempt',
-      payment_amount: 0,
-      payment_method: 'manual',
-      payment_reference: 'Exento marcado por admin',
-      paid_at: new Date().toISOString(),
-    })
+    await updateEntryPayment(entryId, 'exempt')
   }
 
   const scrollToAdminSection = (sectionId: string) => {
@@ -2340,6 +2491,137 @@ useEffect(() => {
             Captura resultados oficiales y controla apertura/cierre de picks.
           </p>
         </div>
+
+
+        <section className="mt-8 rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/10 via-white/[0.03] to-black p-5 shadow-xl sm:p-6 md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-200">
+                Dashboard financiero
+              </div>
+
+              <h2 className="mt-4 text-3xl font-black tracking-tight text-emerald-300 md:text-5xl">
+                Dinero real
+              </h2>
+
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-white/65 md:text-base">
+                Resumen seguro de pagos confirmados, bolsa acumulada, gastos administrativos y últimos movimientos.
+              </p>
+
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
+                Los datos vienen del endpoint admin protegido; no se calculan ni se autorizan desde el navegador.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-emerald-400/25 bg-black/35 p-5 md:min-w-[300px] md:text-right">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
+                Total cobrado
+              </p>
+              <p className="mt-2 text-4xl font-black text-emerald-300">
+                {financeLoading
+                  ? '...'
+                  : formatCurrencyMXN(financeSummary?.totalCollected ?? 0)}
+              </p>
+              <p className="mt-2 text-xs text-white/45">
+                Mercado Pago: {formatCurrencyMXN(financeSummary?.mercadopagoCollected ?? 0)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
+                Pagos aprobados
+              </p>
+              <p className="mt-2 text-2xl font-bold text-white">
+                {financeLoading ? '...' : financeSummary?.approvedPaymentsCount ?? 0}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-yellow-200/70">
+                Bolsa actual
+              </p>
+              <p className="mt-2 text-2xl font-bold text-yellow-300">
+                {financeLoading
+                  ? '...'
+                  : formatCurrencyMXN(financeSummary?.prizePool ?? GUARANTEED_PRIZE_POOL)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
+                Gastos admin
+              </p>
+              <p className="mt-2 text-2xl font-bold text-white">
+                {financeLoading
+                  ? '...'
+                  : formatCurrencyMXN(financeSummary?.adminFees ?? 0)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-red-200/70">
+                Pendientes
+              </p>
+              <p className="mt-2 text-2xl font-bold text-red-100">
+                {financeLoading ? '...' : financeSummary?.pendingEntries ?? 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-lg font-black text-white">
+                Últimos pagos
+              </h3>
+
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/60">
+                Mercado Pago
+              </span>
+            </div>
+
+            {financeLoading ? (
+              <p className="mt-4 text-sm text-white/50">Cargando movimientos...</p>
+            ) : !financeSummary?.recentPayments?.length ? (
+              <p className="mt-4 text-sm text-white/50">Todavía no hay pagos registrados.</p>
+            ) : (
+              <div className="mt-4 divide-y divide-white/10">
+                {financeSummary.recentPayments.slice(0, 5).map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="grid gap-2 py-3 text-sm md:grid-cols-[1fr_130px_120px_150px] md:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-white">
+                        Pago #{payment.provider_payment_id}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-white/45">
+                        {payment.payment_method || payment.provider}
+                      </p>
+                    </div>
+
+                    <div className="font-black text-emerald-300">
+                      {formatCurrencyMXN(Number(payment.amount ?? 0))}
+                    </div>
+
+                    <div>
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-200">
+                        {payment.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-white/45 md:text-right">
+                      {payment.created_at
+                        ? new Date(payment.created_at).toLocaleString('es-MX')
+                        : 'Sin fecha'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <button
@@ -4338,6 +4620,8 @@ export default function Home() {
   const [user, setUser] = useState<UserState>(null)
   const [showTutorialModal, setShowTutorialModal] = useState(false)
   const [showTutorialVideo, setShowTutorialVideo] = useState(false)
+  const [publicPrizePool, setPublicPrizePool] = useState(GUARANTEED_PRIZE_POOL)
+const [publicPrizePoolLoading, setPublicPrizePoolLoading] = useState(true)
 
   const canViewPublic =
     user?.role === 'admin' ||
@@ -4399,6 +4683,60 @@ const dismissTutorialForCurrentUser = () => {
 
   setShowTutorialModal(false)
 }
+useEffect(() => {
+  let mounted = true
+
+  const loadPublicPrizePool = async () => {
+    try {
+      const res = await fetch('/api/public/prize-pool')
+
+      if (!res.ok) {
+        if (!mounted) return
+        setPublicPrizePool(GUARANTEED_PRIZE_POOL)
+        setPublicPrizePoolLoading(false)
+        return
+      }
+
+      const data = await res.json()
+      const nextPrizePool = Number(data?.displayPrizePool ?? GUARANTEED_PRIZE_POOL)
+
+      if (!mounted) return
+
+      setPublicPrizePool(nextPrizePool)
+      setPublicPrizePoolLoading(false)
+    } catch (err) {
+      console.error('Error cargando bolsa pública:', err)
+
+      if (!mounted) return
+      setPublicPrizePool(GUARANTEED_PRIZE_POOL)
+      setPublicPrizePoolLoading(false)
+    }
+  }
+
+  loadPublicPrizePool()
+
+  const interval = window.setInterval(loadPublicPrizePool, 10000)
+
+  const channel = supabase
+    .channel('public-prize-pool-live')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'entries' },
+      loadPublicPrizePool
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'payments' },
+      loadPublicPrizePool
+    )
+    .subscribe()
+
+  return () => {
+    mounted = false
+    window.clearInterval(interval)
+    supabase.removeChannel(channel)
+  }
+}, [])
 
 async function upsertLandingProfile(userId: string, userEmail: string) {
   const cleanFirstName = landingFirstName.trim()
@@ -4737,6 +5075,56 @@ async function loadPersonalRank(userId: string) {
 
   setPersonalRankLoading(false)
 }
+
+useEffect(() => {
+  async function confirmMercadoPagoPayment() {
+    try {
+      if (typeof window === 'undefined') return
+
+      const params = new URLSearchParams(window.location.search)
+      const status = params.get('status')
+      const paymentId = params.get('payment_id')
+      const entryId = params.get('external_reference')
+
+      if (status !== 'approved' || !paymentId || !entryId) return
+
+      const token = await getSafeAccessToken()
+
+      if (!token) {
+        console.warn('No se pudo confirmar pago: sesión no disponible.')
+        return
+      }
+
+      const res = await fetch('/api/mercadopago/confirm-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          paymentId,
+          entryId,
+        }),
+      })
+
+      const payload = await res.json().catch(() => null)
+
+      if (!res.ok || !payload?.success) {
+        console.error('Error confirmando pago:', payload?.error || res.statusText)
+        return
+      }
+
+      const cleanUrl = `${window.location.origin}${window.location.pathname}`
+      window.history.replaceState({}, '', cleanUrl)
+      window.location.href = '/'
+    } catch (err) {
+      console.error('Error confirmando pago:', err)
+    }
+  }
+
+  confirmMercadoPagoPayment()
+}, [])
+
 useEffect(() => {
   if (!user?.id) {
     setParticipantProfile(null)
@@ -5791,23 +6179,34 @@ if (view === 'admin') {
           </div>
         </header>
 
-{user.role !== 'admin' && (
-  <div className="mt-6">
-    <button
-      type="button"
-      onClick={openTutorialVideo}
-      className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
-    >
-      🎥 Ver tutorial
-    </button>
-  </div>
-)}
+<section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
+  {/* TUTORIAL + BOLSA SOLO PLAYER */}
+  {user.role !== 'admin' && (
+    <div className="order-1 md:order-1 md:col-span-2">
+      <div className="grid gap-4">
+        <button
+          type="button"
+          onClick={openTutorialVideo}
+          className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+        >
+          🎥 Ver tutorial
+        </button>
 
-       <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-  {/* MÓVIL: se conserva el orden con order-* / DESKTOP: se acomoda con md:order-* */}
+        <div className="w-full rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black px-5 py-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
+            Bolsa real acumulada al día de hoy
+          </p>
+
+          <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
+            {publicPrizePoolLoading ? '...' : formatCurrencyMXN(publicPrizePool)}
+          </p>
+        </div>
+      </div>
+    </div>
+  )}
 
   {/* MI QUINIELA */}
-<div className={`${user.role === 'admin' ? 'order-2' : 'order-1'} md:order-1`}>
+  <div className={`${user.role === 'admin' ? 'order-2' : 'order-2'} md:order-2`}>
     <DashboardCard
       title="Mi Quiniela"
       description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
@@ -5817,7 +6216,7 @@ if (view === 'admin') {
   </div>
 
   {/* TABLA GENERAL */}
-<div className={`${user.role === 'admin' ? 'order-3' : 'order-2'} md:order-2`}>
+  <div className={`${user.role === 'admin' ? 'order-3' : 'order-3'} md:order-3`}>
     <DashboardCard
       title="Tabla general"
       description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
@@ -5827,7 +6226,7 @@ if (view === 'admin') {
   </div>
 
   {/* QUINIELAS POR PARTIDO */}
-  <div className={`${user.role === 'admin' ? 'order-4' : 'order-3'} md:order-3`}>
+  <div className={`${user.role === 'admin' ? 'order-4' : 'order-4'} md:order-4`}>
     <DashboardCard
       title="Ver todas las Quinielas por partido"
       description="Aqui podras ver lo que puso cada quien en su quiniela."
@@ -5837,7 +6236,7 @@ if (view === 'admin') {
   </div>
 
   {/* QUINIELAS POR PARTICIPANTE */}
-  <div className={`${user.role === 'admin' ? 'order-5' : 'order-4'} md:order-4`}>
+  <div className={`${user.role === 'admin' ? 'order-5' : 'order-5'} md:order-5`}>
     <DashboardCard
       title="Ver todas las Quinielas por participante"
       description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
@@ -5847,7 +6246,7 @@ if (view === 'admin') {
   </div>
 
   {/* REGLAMENTO */}
-  <div className={`${user.role === 'admin' ? 'order-7' : 'order-6'} md:order-5`}>
+  <div className={`${user.role === 'admin' ? 'order-7' : 'order-6'} md:order-6`}>
     <DashboardCard
       title="Reglamento Oficial"
       description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
@@ -5857,7 +6256,7 @@ if (view === 'admin') {
   </div>
 
   {/* DATOS DEL PARTICIPANTE */}
-  <div className={`${user.role === 'admin' ? 'order-6' : 'order-5'} md:order-6`}>
+  <div className={`${user.role === 'admin' ? 'order-6' : 'order-7'} md:order-7`}>
     <DashboardCard
       title="Datos del Participante"
       description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
@@ -5868,7 +6267,7 @@ if (view === 'admin') {
 
   {/* PANEL ADMIN */}
   {user.role === 'admin' && (
-    <div className="order-1 md:order-7 md:col-span-2">
+    <div className="order-1 md:order-1 md:col-span-2">
       <DashboardCard
         title="Panel de Administración"
         description="Solo para administradores"
@@ -5878,7 +6277,7 @@ if (view === 'admin') {
     </div>
   )}
 
-  {/* TUTORIAL SOLO ADMIN */}
+  {/* TUTORIAL + BOLSA SOLO ADMIN */}
   {user.role === 'admin' && (
     <div className="order-8 md:order-8 md:col-span-2">
       <button
@@ -5888,6 +6287,16 @@ if (view === 'admin') {
       >
         🎥 Ver tutorial
       </button>
+
+      <div className="mt-4 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black px-5 py-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
+          Bolsa real acumulada al día de hoy
+        </p>
+
+        <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
+          {publicPrizePoolLoading ? '...' : formatCurrencyMXN(publicPrizePool)}
+        </p>
+      </div>
     </div>
   )}
 </section>

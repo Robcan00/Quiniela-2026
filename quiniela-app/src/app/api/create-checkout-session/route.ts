@@ -1,34 +1,22 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { MercadoPagoConfig, Preference } from 'mercadopago'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+const ENTRY_PRICE = 2500
+
 export async function POST(req: Request) {
   try {
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-    const stripePriceId = process.env.STRIPE_PRICE_ID
+    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.superquiniela2026.com'
 
-    if (!stripeSecretKey) {
+    if (!accessToken || !supabaseUrl || !supabaseAnonKey) {
       return NextResponse.json(
-        { error: 'Falta STRIPE_SECRET_KEY en variables de entorno.' },
-        { status: 500 }
-      )
-    }
-
-    if (!stripePriceId) {
-      return NextResponse.json(
-        { error: 'Falta STRIPE_PRICE_ID en variables de entorno.' },
-        { status: 500 }
-      )
-    }
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return NextResponse.json(
-        { error: 'Faltan variables de Supabase.' },
+        { error: 'Faltan variables de entorno.' },
         { status: 500 }
       )
     }
@@ -37,24 +25,21 @@ export async function POST(req: Request) {
 
     if (!entryId || typeof entryId !== 'string') {
       return NextResponse.json(
-        { error: 'Faltan datos para crear el pago.' },
+        { error: 'Falta entryId.' },
         { status: 400 }
       )
     }
 
     const authHeader = req.headers.get('authorization')
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.warn('[SECURITY] Intento de checkout sin token de autenticación')
-      return NextResponse.json(
-        { error: 'Usuario no autenticado.' },
-        { status: 401 }
-      )
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No autorizado.' }, { status: 401 })
     }
 
     const token = authHeader.substring(7)
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
       global: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -65,31 +50,22 @@ export async function POST(req: Request) {
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser()
+    } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      console.warn(
-        '[SECURITY] Token inválido o usuario no autenticado:',
-        userError?.message
-      )
       return NextResponse.json(
-        { error: 'Token inválido o expirado.' },
+        { error: 'Sesión inválida o expirada.' },
         { status: 401 }
       )
     }
 
-    const { data: entry, error: entryError } = await supabaseClient
+    const { data: entry, error: entryError } = await supabase
       .from('entries')
-      .select('user_id, payment_status')
+      .select('id, user_id, payment_status')
       .eq('id', entryId)
       .single()
 
     if (entryError || !entry) {
-      console.warn(
-        '[SECURITY] EntryId no encontrado o error Supabase:',
-        entryId,
-        entryError?.message
-      )
       return NextResponse.json(
         { error: 'Quiniela no encontrada.' },
         { status: 404 }
@@ -97,13 +73,8 @@ export async function POST(req: Request) {
     }
 
     if (entry.user_id !== user.id) {
-      console.warn('[SECURITY] Intento de pago para quiniela ajena.', {
-        userId: user.id,
-        entryUserId: entry.user_id,
-      })
-
       return NextResponse.json(
-        { error: 'No tienes permiso para pagar esta quiniela.' },
+        { error: 'No puedes pagar una quiniela ajena.' },
         { status: 403 }
       )
     }
@@ -115,37 +86,45 @@ export async function POST(req: Request) {
       )
     }
 
-    const stripe = new Stripe(stripeSecretKey)
+    const client = new MercadoPagoConfig({
+      accessToken,
+    })
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [
-        {
-          price: stripePriceId,
-          quantity: 1,
+    const preference = new Preference(client)
+
+    const result = await preference.create({
+      body: {
+        items: [
+          {
+            id: entryId,
+            title: 'Súper Quiniela Mundial 2026',
+            quantity: 1,
+            unit_price: ENTRY_PRICE,
+            currency_id: 'MXN',
+          },
+        ],
+        payer: {
+          email: user.email ?? undefined,
         },
-      ],
-      customer_email: user.email ?? undefined,
-      client_reference_id: entryId,
-      metadata: {
-        entry_id: entryId,
-        user_id: user.id,
+        external_reference: entryId,
+        notification_url: `${siteUrl}/api/mercadopago/webhook`,
+        back_urls: {
+          success: `${siteUrl}?payment=success`,
+          failure: `${siteUrl}?payment=failed`,
+          pending: `${siteUrl}?payment=pending`,
+        },
+        auto_return: 'approved',
       },
-      success_url: 'https://www.superquiniela2026.com?payment=success',
-      cancel_url: 'https://www.superquiniela2026.com?payment=cancelled',
     })
 
-    console.log('[INFO] Sesión de checkout creada:', {
-      entryId,
-      userId: user.id,
+    return NextResponse.json({
+      url: result.init_point,
     })
-
-    return NextResponse.json({ url: session.url })
   } catch (error) {
-    console.error('Error creando checkout session:', error)
+    console.error('[MERCADOPAGO_CHECKOUT] Error:', error)
 
     return NextResponse.json(
-      { error: 'Error creando sesión de pago.' },
+      { error: 'Error creando pago con Mercado Pago.' },
       { status: 500 }
     )
   }
