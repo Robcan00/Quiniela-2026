@@ -4622,6 +4622,7 @@ export default function Home() {
   const [showTutorialVideo, setShowTutorialVideo] = useState(false)
   const [publicPrizePool, setPublicPrizePool] = useState(GUARANTEED_PRIZE_POOL)
 const [publicPrizePoolLoading, setPublicPrizePoolLoading] = useState(true)
+const [animatedPrize, setAnimatedPrize] = useState(GUARANTEED_PRIZE_POOL)
 
   const canViewPublic =
     user?.role === 'admin' ||
@@ -4737,6 +4738,30 @@ useEffect(() => {
     supabase.removeChannel(channel)
   }
 }, [])
+
+useEffect(() => {
+  let start = animatedPrize
+  let end = publicPrizePool
+
+  if (start === end) return
+
+  const duration = 800
+  const startTime = Date.now()
+
+  const animate = () => {
+    const now = Date.now()
+    const progress = Math.min((now - startTime) / duration, 1)
+
+    const value = Math.floor(start + (end - start) * progress)
+    setAnimatedPrize(value)
+
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+
+  animate()
+}, [publicPrizePool])
 
 async function upsertLandingProfile(userId: string, userEmail: string) {
   const cleanFirstName = landingFirstName.trim()
@@ -6208,7 +6233,7 @@ if (view === 'admin') {
     </p>
 
     <p className="mt-3 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-4xl font-black tracking-tight text-transparent drop-shadow-[0_0_20px_rgba(250,204,21,0.35)] md:text-6xl">
-      {publicPrizePoolLoading ? '...' : formatCurrencyMXN(publicPrizePool)}
+      {publicPrizePoolLoading ? '...' : formatCurrencyMXN(animatedPrize)}
     </p>
 
     <p className="mx-auto mt-3 max-w-md text-xs font-semibold leading-5 text-white/55">
@@ -6325,7 +6350,7 @@ if (view === 'admin') {
         </p>
 
         <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
-          {publicPrizePoolLoading ? '...' : formatCurrencyMXN(publicPrizePool)}
+          {publicPrizePoolLoading ? '...' : formatCurrencyMXN(animatedPrize)}
         </p>
       </div>
     </div>
