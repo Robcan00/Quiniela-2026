@@ -6192,15 +6192,46 @@ if (view === 'admin') {
           🎥 Ver tutorial
         </button>
 
-        <div className="w-full rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black px-5 py-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
-            Bolsa real acumulada al día de hoy
-          </p>
+        <div className="relative w-full overflow-hidden rounded-[2rem] border border-yellow-400/35 bg-gradient-to-br from-yellow-300/15 via-black to-yellow-700/10 px-5 py-6 text-center shadow-[0_0_45px_rgba(250,204,21,0.22)]">
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.22),transparent_45%)]" />
+  <div className="absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.95)]" />
 
-          <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
-            {publicPrizePoolLoading ? '...' : formatCurrencyMXN(publicPrizePool)}
-          </p>
-        </div>
+  <div className="relative z-10">
+    <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-200">
+      <span className="animate-pulse">💰</span>
+      Jackpot Mundialista
+      <span className="animate-pulse">💰</span>
+    </div>
+
+    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
+      Bolsa real acumulada al día de hoy
+    </p>
+
+    <p className="mt-3 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-4xl font-black tracking-tight text-transparent drop-shadow-[0_0_20px_rgba(250,204,21,0.35)] md:text-6xl">
+      {publicPrizePoolLoading ? '...' : formatCurrencyMXN(publicPrizePool)}
+    </p>
+
+    <p className="mx-auto mt-3 max-w-md text-xs font-semibold leading-5 text-white/55">
+      La bolsa garantizada es de {formatCurrencyMXN(GUARANTEED_PRIZE_POOL)} y puede crecer conforme entren más quinielas pagadas.
+    </p>
+
+    <div className="mx-auto mt-5 h-2 max-w-md overflow-hidden rounded-full border border-yellow-400/20 bg-black/50">
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 shadow-[0_0_18px_rgba(250,204,21,0.75)] transition-all duration-700"
+        style={{
+          width: `${Math.min(
+            100,
+            Math.max(12, (publicPrizePool / GUARANTEED_PRIZE_POOL) * 100)
+          )}%`,
+        }}
+      />
+    </div>
+
+    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300/55">
+      Premio garantizado · Súper Quiniela Mundial 2026
+    </p>
+  </div>
+</div>
       </div>
     </div>
   )}
