@@ -1600,7 +1600,12 @@ useEffect(() => {
 </div>
 
 <div className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 shadow-2xl text-center">
-  <p className="text-xs uppercase tracking-[0.22em] text-white/45">
+  
+  <p className="mb-3 text-sm font-bold text-red-400 animate-pulse">
+  ⚠️ Recuerda que puedes modificar tus picks hasta el cierre de pronósticos
+</p>
+
+<p className="text-xs uppercase tracking-[0.22em] text-white/45">
     Cierre de pronósticos
   </p>
 
