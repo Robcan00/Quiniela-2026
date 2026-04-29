@@ -14,8 +14,7 @@ function isAdminEmail(email?: string | null) {
 async function canViewPublicData(
   req: Request,
   supabaseUrl: string,
-  supabaseAnonKey: string,
-  supabaseServiceKey: string
+  supabaseAnonKey: string
 ) {
   if (new Date() >= PUBLIC_REVEAL_DATE) return true
 
@@ -25,25 +24,24 @@ async function canViewPublicData(
   const token = authHeader.substring(7)
   if (!token || token === 'null' || token === 'undefined') return false
 
-  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   })
 
   const {
     data: { user },
     error: userError,
-  } = await authClient.auth.getUser(token)
+  } = await supabase.auth.getUser()
 
   if (userError || !user) return false
-
-  // Fallback seguro: este email viene del JWT verificado por Supabase.
   if (isAdminEmail(user.email)) return true
 
-  const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { persistSession: false },
-  })
-
-  const { data: profile, error: profileError } = await adminClient
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -67,12 +65,7 @@ export async function GET(req: Request) {
       )
     }
 
-    const allowed = await canViewPublicData(
-      req,
-      supabaseUrl,
-      supabaseAnonKey,
-      supabaseServiceKey
-    )
+    const allowed = await canViewPublicData(req, supabaseUrl, supabaseAnonKey)
 
     if (!allowed) {
       return NextResponse.json(
@@ -81,11 +74,11 @@ export async function GET(req: Request) {
       )
     }
 
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
     })
 
-    const { data, error } = await adminClient
+    const { data, error } = await supabase
       .from('entries')
       .select(`
         id,

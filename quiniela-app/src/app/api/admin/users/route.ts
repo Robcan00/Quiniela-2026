@@ -28,7 +28,15 @@ export async function GET(req: Request) {
 
     const token = authHeader.substring(7)
 
+    if (!token || token === 'null' || token === 'undefined') {
+      return NextResponse.json(
+        { error: 'Token inválido.' },
+        { status: 401 }
+      )
+    }
+
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
       global: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -61,7 +69,9 @@ export async function GET(req: Request) {
       )
     }
 
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    })
 
     const { data, error } = await adminClient
       .from('profiles')

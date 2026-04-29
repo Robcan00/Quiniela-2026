@@ -598,6 +598,7 @@ function LeaderboardScreen({
 }) {
   const [rows, setRows] = useState<LeaderboardRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasOfficialResults, setHasOfficialResults] = useState(false)
 
   useScrollToPageTop([])
 
@@ -605,24 +606,41 @@ function LeaderboardScreen({
     let mounted = true
 
     const loadLeaderboard = async () => {
-      const { data, error } = await supabase
+  const [{ data, error }, { data: matchesData, error: matchesError }] =
+    await Promise.all([
+      supabase
         .from('leaderboard')
         .select('*')
         .order('total_points', { ascending: false })
         .order('exact_hits', { ascending: false })
-        .order('goal_diff', { ascending: true })
+        .order('goal_diff', { ascending: true }),
 
-      if (!mounted) return
+      supabase
+        .from('matches')
+        .select('id, home_score, away_score')
+        .not('home_score', 'is', null)
+        .not('away_score', 'is', null)
+        .limit(1),
+    ])
 
-      if (error) {
-        console.error('Error cargando leaderboard:', error.message)
-        setRows([])
-      } else {
-        setRows((data as LeaderboardRow[]) ?? [])
-      }
+  if (!mounted) return
 
-      setLoading(false)
-    }
+  if (matchesError) {
+    console.error('Error revisando resultados oficiales:', matchesError.message)
+    setHasOfficialResults(false)
+  } else {
+    setHasOfficialResults((matchesData ?? []).length > 0)
+  }
+
+  if (error) {
+    console.error('Error cargando leaderboard:', error.message)
+    setRows([])
+  } else {
+    setRows((data as LeaderboardRow[]) ?? [])
+  }
+
+  setLoading(false)
+}
 
     loadLeaderboard()
 
@@ -640,8 +658,9 @@ function LeaderboardScreen({
     }
   }, [])
 
-  const currentUserPosition =
-    rows.findIndex((row) => row.user_id === currentUser?.id) + 1 || null
+  const currentUserPosition = hasOfficialResults
+    ? rows.findIndex((row) => row.user_id === currentUser?.id) + 1 || null
+    : null
 
   const getRankIcon = (index: number) => {
     if (index === 0) return '🥇'
@@ -742,7 +761,7 @@ function LeaderboardScreen({
           </div>
         </section>
 
-        {leader && (
+        {hasOfficialResults && leader && (
           <section className="mt-5 rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-transparent to-yellow-500/5 p-5 shadow-[0_0_40px_rgba(250,204,21,0.12)] sm:p-6">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
@@ -810,8 +829,85 @@ function LeaderboardScreen({
           </section>
         )}
 
-        <section className="mt-6">
-          {loading ? (
+        {!loading && !hasOfficialResults && (
+          <section className="mt-5 rounded-3xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-transparent to-yellow-500/5 p-5 shadow-[0_0_40px_rgba(250,204,21,0.12)] sm:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-yellow-400/40 bg-yellow-400/10 text-3xl shadow-[0_0_25px_rgba(250,204,21,0.25)] sm:h-16 sm:w-16">
+                  🥇
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-yellow-300/70">
+                    Líder actual
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-white/35 sm:text-2xl">
+                    —
+                  </h2>
+                  <p className="text-sm font-semibold text-yellow-300/40">
+                    —
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:min-w-[480px]">
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Puntos</p>
+                  <p className="mt-2 text-xl font-bold text-yellow-400/40 sm:text-2xl">—</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Exactos</p>
+                  <p className="mt-2 text-xl font-bold text-white/35 sm:text-2xl">—</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Aciertos</p>
+                  <p className="mt-2 text-xl font-bold text-white/35 sm:text-2xl">—</p>
+                </div>
+                <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-3 sm:p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">Dif. goles</p>
+                  <p className="mt-2 text-xl font-bold text-yellow-300/40 sm:text-2xl">—</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+{!loading && !hasOfficialResults && (
+  <section className="mt-6 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-transparent p-6 text-center shadow-[0_0_40px_rgba(250,204,21,0.10)] sm:p-8">
+    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-3xl">
+      🏆
+    </div>
+
+    <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-yellow-400 sm:text-3xl">
+      Tabla General aún no activa
+    </h2>
+
+    <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
+      La tabla oficial se activará cuando se capture el primer resultado oficial del Mundial 2026.
+    </p>
+
+    <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-white/10 bg-black/30 p-5 text-left">
+      <p className="text-sm font-bold text-white">
+        Mientras tanto:
+      </p>
+
+      <ul className="mt-3 space-y-2 text-sm text-white/65">
+        <li>• No hay posiciones oficiales.</li>
+        <li>• Todos los participantes siguen en cero.</li>
+        <li>• El ranking empezará cuando exista el primer marcador oficial.</li>
+      </ul>
+      
+      <p className="mt-4 text-lg font-bold text-white">
+  Quinielas registradas: {rows.length}
+</p>
+    </div>
+  </section>
+)}
+
+
+        {hasOfficialResults && (
+<section className="mt-6">
+  {loading ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
               Cargando leaderboard...
             </div>
@@ -993,6 +1089,7 @@ function LeaderboardScreen({
             </>
           )}
         </section>
+)}
       </div>
     
 <WhatsAppSupportButton user={currentUser} />
@@ -1025,7 +1122,6 @@ const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 const didUserEditRef = useRef(false)
   const [officialResults, setOfficialResults] = useState<Record<string, OfficialResult>>({})
   const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
-  const autoZeroAppliedRef = useRef<string | null>(null)
 
   useScrollToPageTop([])
 
@@ -1067,46 +1163,6 @@ const didUserEditRef = useRef(false)
           isAutoZero: Boolean(row.is_auto_zero),
         }
       })
-
-      const lockDate = new Date('2026-06-11T10:00:00-06:00')
-      const isPastDeadline = new Date() >= lockDate
-      const shouldAutoFillMissing =
-        isPastDeadline && activeEntryId && autoZeroAppliedRef.current !== activeEntryId
-
-      if (shouldAutoFillMissing) {
-        const missingRows = MATCHES
-          .filter((match) => {
-            const prediction = formatted[match.id]
-            return !prediction || prediction.homeScore === '' || prediction.awayScore === ''
-          })
-          .map((match) => ({
-            entry_id: activeEntryId,
-            match_id: match.id,
-            home_score_predicted: 0,
-            away_score_predicted: 0,
-            is_auto_zero: true,
-          }))
-
-        if (missingRows.length > 0) {
-          const { error: autoZeroError } = await supabase
-            .from('predictions')
-            .upsert(missingRows, { onConflict: 'entry_id,match_id' })
-
-          if (autoZeroError) {
-            console.error('Error aplicando ceros automáticos:', autoZeroError.message)
-          } else {
-            missingRows.forEach((row) => {
-              formatted[row.match_id] = {
-                homeScore: '0',
-                awayScore: '0',
-                isAutoZero: true,
-              }
-            })
-          }
-        }
-
-        autoZeroAppliedRef.current = activeEntryId
-      }
 
       setPredictions(formatted)
     }
@@ -1598,15 +1654,10 @@ useEffect(() => {
                     awayScore: '',
                   }
 
-                  const state = matchStates[match.id] ?? {
-                    isOpen: true,
-                    isFinished: false,
-                  }
-
                   const hasOfficialResult =
                     official.homeScore !== '' && official.awayScore !== ''
 
-                  const locked = isGlobalLock || getTimeLock(match.kickoff) || !state.isOpen
+                  const locked = isGlobalLock
                   const status = getPickStatus(current, official)
 
                   return (
@@ -1671,15 +1722,9 @@ useEffect(() => {
                           <div className="mt-4 flex flex-wrap items-center gap-3">
                            {locked && (
   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-400">
-    🔒 {isGlobalLock ? 'Captura cerrada' : 'Partido cerrado'}
+    🔒 Captura cerrada
   </p>
 )}
-
-                            {!state.isOpen && (
-                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/55">
-                                Bloqueado por admin
-                              </p>
-                            )}
 
                             {hasOfficialResult && (
                               <div className="inline-flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100">
