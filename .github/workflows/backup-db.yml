@@ -1,0 +1,32 @@
+name: Backup Supabase DB
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Backup DB
+        run: |
+          mkdir -p backups
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file backups/db_$(date +%F).sql
+
+      - name: Commit backup
+        run: |
+          git config --global user.name "backup-bot"
+          git config --global user.email "backup@bot.com"
+          git add backups/
+          git commit -m "backup: db $(date +%F)" || echo "no changes"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
