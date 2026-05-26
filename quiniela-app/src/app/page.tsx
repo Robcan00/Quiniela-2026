@@ -176,6 +176,22 @@ const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
 const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
 const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`
 
+const GROUP_STAGE_ORDER = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D', 'Grupo E', 'Grupo F', 'Grupo G', 'Grupo H']
+
+function sortGroupStageEntries<T>(entries: Array<[string, T]>) {
+  return entries.sort(([groupA], [groupB]) => {
+    const indexA = GROUP_STAGE_ORDER.indexOf(groupA)
+    const indexB = GROUP_STAGE_ORDER.indexOf(groupB)
+
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB
+    if (indexA !== -1) return -1
+    if (indexB !== -1) return 1
+
+    return groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
+  })
+}
+
+
 function scrollToPageTop() {
   if (typeof window === 'undefined') return
 
@@ -1292,20 +1308,22 @@ setTimeLeft({
 }, [])
 
   const groupedMatches = useMemo(() => {
-  const sortedMatches = [...MATCHES].sort((a, b) => {
-    const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0
-    const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0
-
-    return dateA - dateB
-  })
-
-  const grouped = sortedMatches.reduce<Record<string, Match[]>>((acc, match) => {
+  const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
     if (!acc[match.group]) acc[match.group] = []
     acc[match.group].push(match)
     return acc
   }, {})
 
-  return grouped
+  Object.values(grouped).forEach((matches) => {
+    matches.sort((a, b) => {
+      const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0
+      const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0
+
+      return dateA - dateB
+    })
+  })
+
+  return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
 }, [])
 
   const totalCompleted = Object.values(predictions).filter(
@@ -4247,20 +4265,7 @@ function EntryDetailScreen({
       return acc
     }, {})
 
-    const groupOrder = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D', 'Grupo E', 'Grupo F', 'Grupo G', 'Grupo H']
-
-return Object.fromEntries(
-  Object.entries(grouped).sort(([groupA], [groupB]) => {
-    const indexA = groupOrder.indexOf(groupA)
-    const indexB = groupOrder.indexOf(groupB)
-
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB
-    if (indexA !== -1) return -1
-    if (indexB !== -1) return 1
-
-    return groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
-  })
-)
+return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
   }, [])
 
   const summary = useMemo(() => {
