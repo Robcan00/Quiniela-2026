@@ -15,10 +15,20 @@ export async function POST(req: Request) {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!accessToken || !supabaseUrl || !supabaseAnonKey || !serviceKey) {
-      return NextResponse.json({ error: 'Faltan variables.' }, { status: 500 })
-    }
-
+   if (!accessToken || !supabaseUrl || !supabaseAnonKey || !serviceKey) {
+  return NextResponse.json(
+    {
+      error: 'Faltan variables.',
+      missing: {
+        MERCADOPAGO_ACCESS_TOKEN: !accessToken,
+        NEXT_PUBLIC_SUPABASE_URL: !supabaseUrl,
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: !supabaseAnonKey,
+        SUPABASE_SERVICE_ROLE_KEY: !serviceKey,
+      },
+    },
+    { status: 500 }
+  )
+}
     const { paymentId, entryId } = await req.json()
 
     if (!paymentId || !entryId) {

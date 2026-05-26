@@ -150,7 +150,11 @@ CREATE TABLE IF NOT EXISTS "public"."entries" (
     "email" "text" NOT NULL,
     "entry_number" integer DEFAULT 1 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "payment_reference" "text",
+    "payment_method" "text",
+    "payment_amount" numeric,
+    "paid_at" timestamp without time zone
 );
 
 
@@ -343,6 +347,45 @@ CREATE TABLE IF NOT EXISTS "public"."matches_backup_20260421" (
 ALTER TABLE "public"."matches_backup_20260421" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."payment_audit_logs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "entry_id" "uuid" NOT NULL,
+    "user_id" "uuid",
+    "admin_id" "uuid" NOT NULL,
+    "admin_email" "text" NOT NULL,
+    "previous_status" "text",
+    "new_status" "text" NOT NULL,
+    "previous_amount" numeric,
+    "new_amount" numeric,
+    "previous_method" "text",
+    "new_method" "text",
+    "previous_reference" "text",
+    "new_reference" "text",
+    "changed_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."payment_audit_logs" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."payments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "entry_id" "uuid",
+    "user_id" "uuid",
+    "provider" "text" DEFAULT 'mercadopago'::"text" NOT NULL,
+    "provider_payment_id" "text" NOT NULL,
+    "status" "text" NOT NULL,
+    "amount" numeric DEFAULT 0 NOT NULL,
+    "currency" "text" DEFAULT 'MXN'::"text" NOT NULL,
+    "payment_method" "text",
+    "raw_payload" "jsonb",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."payments" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."predictions_backup_20260421" (
     "id" "uuid",
     "user_id" "uuid",
@@ -404,6 +447,16 @@ ALTER TABLE ONLY "public"."matches"
 
 
 
+ALTER TABLE ONLY "public"."payment_audit_logs"
+    ADD CONSTRAINT "payment_audit_logs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."predictions"
     ADD CONSTRAINT "predictions_pkey" PRIMARY KEY ("id");
 
@@ -439,6 +492,11 @@ ALTER TABLE ONLY "public"."score_entries"
 
 
 
+ALTER TABLE ONLY "public"."entries"
+    ADD CONSTRAINT "unique_payment_reference" UNIQUE ("payment_reference");
+
+
+
 CREATE INDEX "idx_entries_email" ON "public"."entries" USING "btree" ("email");
 
 
@@ -468,6 +526,10 @@ CREATE INDEX "idx_score_entries_match_id" ON "public"."score_entries" USING "btr
 
 
 CREATE INDEX "idx_score_entries_user_id" ON "public"."score_entries" USING "btree" ("user_id");
+
+
+
+CREATE UNIQUE INDEX "payments_provider_payment_id_unique" ON "public"."payments" USING "btree" ("provider_payment_id");
 
 
 
@@ -506,6 +568,16 @@ ALTER TABLE ONLY "public"."entries"
 
 ALTER TABLE ONLY "public"."entries"
     ADD CONSTRAINT "entries_quiniela_id_fkey" FOREIGN KEY ("quiniela_id") REFERENCES "public"."quinielas"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_entry_id_fkey" FOREIGN KEY ("entry_id") REFERENCES "public"."entries"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."payments"
+    ADD CONSTRAINT "payments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE SET NULL;
 
 
 
@@ -591,6 +663,12 @@ ALTER TABLE "public"."matches" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."matches_backup_20260421" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payment_audit_logs" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."payments" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."predictions" ENABLE ROW LEVEL SECURITY;
@@ -876,6 +954,18 @@ GRANT ALL ON TABLE "public"."leaderboard_entries" TO "service_role";
 GRANT ALL ON TABLE "public"."matches_backup_20260421" TO "anon";
 GRANT ALL ON TABLE "public"."matches_backup_20260421" TO "authenticated";
 GRANT ALL ON TABLE "public"."matches_backup_20260421" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payment_audit_logs" TO "anon";
+GRANT ALL ON TABLE "public"."payment_audit_logs" TO "authenticated";
+GRANT ALL ON TABLE "public"."payment_audit_logs" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."payments" TO "anon";
+GRANT ALL ON TABLE "public"."payments" TO "authenticated";
+GRANT ALL ON TABLE "public"."payments" TO "service_role";
 
 
 

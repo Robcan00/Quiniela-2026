@@ -4247,11 +4247,20 @@ function EntryDetailScreen({
       return acc
     }, {})
 
-    return Object.fromEntries(
-      Object.entries(grouped).sort(([groupA], [groupB]) =>
-        groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
-      )
-    )
+    const groupOrder = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D', 'Grupo E', 'Grupo F', 'Grupo G', 'Grupo H']
+
+return Object.fromEntries(
+  Object.entries(grouped).sort(([groupA], [groupB]) => {
+    const indexA = groupOrder.indexOf(groupA)
+    const indexB = groupOrder.indexOf(groupB)
+
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB
+    if (indexA !== -1) return -1
+    if (indexB !== -1) return 1
+
+    return groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
+  })
+)
   }, [])
 
   const summary = useMemo(() => {
