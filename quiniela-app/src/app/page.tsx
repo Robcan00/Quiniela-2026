@@ -5438,61 +5438,8 @@ return
     setPredictions({})
   }
   const handleDeleteActiveEntry = async () => {
-  if (!user?.id || !activeEntryId) return
-
-  if (entries.length <= 1) {
-    alert('Debes conservar al menos una quiniela.')
-    return
+    alert('El borrado de quinielas activas ya está desactivado.')
   }
-
-  const activeEntry = entries.find((entry) => entry.id === activeEntryId)
-  const confirmed = window.confirm(
-    `¿Seguro que quieres borrar la quiniela "${activeEntry?.name || 'actual'}"?`
-  )
-
-  if (!confirmed) return
-
-  const { error } = await supabase
-    .from('entries')
-    .delete()
-    .eq('id', activeEntryId)
-
-  if (error) {
-    alert(`No se pudo borrar la quiniela: ${error.message}`)
-    return
-  }
-
-  const remainingEntries = entries.filter((entry) => entry.id !== activeEntryId)
-
-  const nextActiveId = remainingEntries[0]?.id ?? null
-
-  if (nextActiveId) {
-    await supabase
-      .from('entries')
-      .update({ is_active: false })
-      .eq('user_id', user.id)
-
-    await supabase
-      .from('entries')
-      .update({ is_active: true })
-      .eq('id', nextActiveId)
-  }
-
-  const { data: refreshedEntries, error: refreshError } = await supabase
-    .from('entries')
-    .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-    .eq('user_id', user.id)
-    .order('name', { ascending: true })
-
-  if (refreshError) {
-    alert(`La quiniela se borró, pero hubo un error al refrescar: ${refreshError.message}`)
-    return
-  }
-
-  setEntries((refreshedEntries as EntryRow[]) ?? [])
-  setActiveEntryId(nextActiveId)
-  setPredictions({})
-}
   const activeEntry = entries.find((entry) => entry.id === activeEntryId) ?? null
   const activeEntryPaymentStatus = activeEntry?.payment_status ?? 'pending'
   const activeEntryPaymentAmount = Number(activeEntry?.payment_amount ?? 0)
@@ -6074,18 +6021,6 @@ if (view === 'admin') {
                   className="w-full cursor-not-allowed rounded-2xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100 opacity-80"
                 >
                   🔒 Registro cerrado
-                </button>
-
-                <button
-                  onClick={handleDeleteActiveEntry}
-                  disabled={entries.length <= 1}
-                  className={`w-full rounded-2xl border px-4 py-3 text-sm font-bold transition active:scale-[0.99] ${
-                    entries.length <= 1
-                      ? 'cursor-not-allowed border-white/10 bg-white/5 text-white/35'
-                      : 'border-red-400/20 bg-red-400/10 text-red-200 hover:bg-red-400/15'
-                  }`}
-                >
-                  🗑 Borrar quiniela activa
                 </button>
               </div>
             </aside>
