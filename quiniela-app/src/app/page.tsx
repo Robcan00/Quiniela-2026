@@ -173,6 +173,7 @@ const ADMIN_FEE_PER_ENTRY = 200
 const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
 const GUARANTEED_PRIZE_POOL = 300000
 const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
+const REGISTRATION_CLOSED_MESSAGE = 'El periodo para crear o pagar nuevas quinielas ya cerró.'
 const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
 const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`
 
@@ -1160,7 +1161,6 @@ function PicksScreen({
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
   const [autoSaving, setAutoSaving] = useState(false)
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
 const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 const didUserEditRef = useRef(false)
   const [officialResults, setOfficialResults] = useState<Record<string, OfficialResult>>({})
@@ -1574,73 +1574,12 @@ useEffect(() => {
     </p>
   </div>
 ) : (
-<button
-  type="button"
-  onClick={async () => {
-    if (checkoutLoading) return
-
-    setCheckoutLoading(true)
-
-    try {
-      if (!activeEntryId) {
-        alert('No se pudo identificar tu quiniela activa.')
-        return
-      }
-
-      // Obtener token de sesión para autenticación
-      const token = await getSafeAccessToken()
-
-      if (!token) {
-        alert('Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente.')
-        return
-      }
-
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          entryId: activeEntryId,
-          userEmail: user?.email,
-        }),
-      })
-
-      let data: any = {}
-
-      try {
-        data = await res.json()
-      } catch {
-        data = {}
-      }
-
-      if (!res.ok || !data.url) {
-        alert(
-          data.error ||
-            data.message ||
-            `Error iniciando el pago. Código: ${res.status}`
-        )
-        return
-      }
-
-      window.location.href = data.url
-    } catch (error) {
-      console.error('Error iniciando el pago:', error)
-      alert('Error iniciando el pago. Revisa la terminal del servidor.')
-    } finally {
-      setCheckoutLoading(false)
-    }
-  }}
-  disabled={checkoutLoading}
-  className={`mt-5 w-full rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 px-6 py-4 text-base font-black text-black shadow-[0_0_28px_rgba(250,204,21,0.22)] transition active:scale-[0.99] md:text-lg ${
-    checkoutLoading
-      ? 'cursor-not-allowed opacity-70'
-      : 'hover:scale-[1.01]'
-  }`}
->
-  {checkoutLoading ? 'Redirigiendo a pago...' : '💳 Pagar mi quiniela'}
-</button>
+<div className="mt-5 w-full rounded-2xl border border-red-400/25 bg-red-400/10 px-6 py-5 text-center text-red-100">
+  <p className="text-lg font-black md:text-xl">🔒 Pago cerrado</p>
+  <p className="mt-2 text-sm opacity-80">
+    El periodo para pagar quinielas terminó el 10 de junio de 2026 a las 11:59 PM (CDMX).
+  </p>
+</div>
 )}
 </div>
 
@@ -4673,7 +4612,6 @@ const [personalRank, setPersonalRank] = useState<PersonalRankInfo>({
   outcome_hits: 0,
 })
 const [personalRankLoading, setPersonalRankLoading] = useState(false)
-const creatingDefaultEntryRef = useRef<string | null>(null)
 
 const openView = (nextView: ViewMode) => {
   scrollToPageTop()
@@ -5386,36 +5324,10 @@ if ((data?.length ?? 0) > 0) {
   return
 }
 
-if (creatingDefaultEntryRef.current === user.id) {
-  return
-}
-
-creatingDefaultEntryRef.current = user.id
-
-const nextNumber = 1
-
-const { data: inserted, error: insertError } = await supabase
-  .from('entries')
-  .insert([
-    {
-      user_id: user.id,
-      name: `Mi quiniela ${nextNumber}`,
-      is_active: true,
-    },
-  ])
-  .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-  .single()
-
-creatingDefaultEntryRef.current = null
-
-      if (insertError) {
-  creatingDefaultEntryRef.current = null
-  console.error('Error creando quiniela activa:', insertError.message)
-  return
-}
-
-      setActiveEntryId(inserted.id)
-      setEntries([...(data ?? []), inserted as EntryRow])
+// Registro cerrado: ya no se crean quinielas automáticamente para usuarios sin pago/registro.
+setActiveEntryId(null)
+setEntries([])
+return
     }
 
     loadOrCreateEntry()
@@ -5482,50 +5394,7 @@ creatingDefaultEntryRef.current = null
   }
 
   const handleCreateEntry = async () => {
-    if (!user?.id) return
-
-    const nextEntryNumber = entries.length + 1
-    const defaultName = `Mi quiniela ${nextEntryNumber}`
-    const name = prompt('Nombre de la nueva quiniela', defaultName)
-
-    if (!name) return
-
-    const { data, error } = await supabase
-      .from('entries')
-      .insert([
-        {
-          user_id: user.id,
-          name,
-          is_active: true,
-        },
-      ])
-      .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-      .single()
-
-    if (error) {
-      alert(error.message)
-      return
-    }
-
-    await supabase
-      .from('entries')
-      .update({ is_active: false })
-      .eq('user_id', user.id)
-      .neq('id', data.id)
-
-    const { data: entriesData, error: refreshError } = await supabase
-      .from('entries')
-      .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-      .eq('user_id', user.id)
-      .order('name', { ascending: true })
-
-    if (refreshError) {
-      alert(refreshError.message)
-      return
-    }
-
-    setActiveEntryId(data.id)
-    setEntries((entriesData as EntryRow[]) ?? [])
+    alert(REGISTRATION_CLOSED_MESSAGE)
   }
 
   const handleChangeActiveEntry = async (entryId: string) => {
@@ -6142,6 +6011,9 @@ if (view === 'admin') {
                     onChange={(e) => handleChangeActiveEntry(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-sm font-semibold text-white outline-none transition focus:border-yellow-400/40"
                   >
+                    {entries.length === 0 && (
+                      <option value="">Sin quinielas activas</option>
+                    )}
                     {entries.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.name}
@@ -6196,10 +6068,12 @@ if (view === 'admin') {
 
               <div className="mt-5 grid gap-3">
                 <button
+                  type="button"
                   onClick={handleCreateEntry}
-                  className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-3 text-sm font-bold text-yellow-100 transition hover:bg-yellow-400/15 active:scale-[0.99]"
+                  disabled
+                  className="w-full cursor-not-allowed rounded-2xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100 opacity-80"
                 >
-                  + Nueva quiniela
+                  🔒 Registro cerrado
                 </button>
 
                 <button
