@@ -172,8 +172,6 @@ const ENTRY_PRICE = 2500
 const ADMIN_FEE_PER_ENTRY = 200
 const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
 const GUARANTEED_PRIZE_POOL = 300000
-const PAYMENT_DEADLINE = new Date('2026-06-10T23:59:00-06:00')
-const REGISTRATION_CLOSED_MESSAGE = 'El periodo para crear o pagar nuevas quinielas ya cerró.'
 const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
 const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`
 
@@ -1144,14 +1142,12 @@ function LeaderboardScreen({
 
 function PicksScreen({
   activeEntryId,
-  activeEntryPaymentStatus,
   predictions,
   setPredictions,
   onBack,
   user,
 }: {
   activeEntryId: string | null
-  activeEntryPaymentStatus?: PaymentStatus | null
   predictions: Record<string, Prediction>
   setPredictions: React.Dispatch<React.SetStateAction<Record<string, Prediction>>>
   onBack: () => void
@@ -1168,13 +1164,6 @@ const didUserEditRef = useRef(false)
 
   useScrollToPageTop([])
 
-  const [timeLeft, setTimeLeft] = useState<{
-  text: string
-  level: 'normal' | 'warning' | 'danger'
-}>({
-  text: '',
-  level: 'normal',
-})
 
   useEffect(() => {
     let mounted = true
@@ -1266,46 +1255,6 @@ const didUserEditRef = useRef(false)
     }
   }, [activeEntryId, setPredictions])
 
-  useEffect(() => {
-  const targetDate = new Date('2026-06-11T10:00:00-06:00')
-
-  const updateCountdown = () => {
-    const now = new Date()
-    const diff = targetDate.getTime() - now.getTime()
-
-    if (diff <= 0) {
-      setTimeLeft({
-  text: 'Cerrado',
-  level: 'danger',
-})
-      return
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24)
-    const minutes = Math.floor((diff / (1000 * 60)) % 60)
-    const seconds = Math.floor((diff / 1000) % 60)
-const totalHoursLeft = diff / (1000 * 60 * 60)
-
-let level: 'normal' | 'warning' | 'danger' = 'normal'
-
-if (totalHoursLeft <= 3) {
-  level = 'danger'
-} else if (totalHoursLeft <= 24) {
-  level = 'warning'
-}
-
-setTimeLeft({
-  text: `${days}d ${hours}h ${minutes}m ${seconds}s`,
-  level,
-})
-  }
-
-  updateCountdown()
-  const interval = setInterval(updateCountdown, 1000)
-
-  return () => clearInterval(interval)
-}, [])
 
   const groupedMatches = useMemo(() => {
   const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
@@ -1334,6 +1283,44 @@ const totalPending = totalMatches - totalCompleted
 const isComplete = totalPending === 0
 const globalDeadline = new Date('2026-06-11T10:00:00-06:00')
 const isGlobalLock = new Date() >= globalDeadline
+
+const currentPointsSummary = useMemo(() => {
+  let totalPoints = 0
+  let exactHits = 0
+  let outcomeHits = 0
+
+  MATCHES.forEach((match) => {
+    const prediction = predictions[match.id] ?? {
+      homeScore: '',
+      awayScore: '',
+    }
+    const official = officialResults[match.id] ?? {
+      homeScore: '',
+      awayScore: '',
+    }
+
+    const status = getPickStatus(prediction, official)
+
+    if (!status) return
+
+    if (status.label.includes('Exacto')) {
+      totalPoints += 3
+      exactHits += 1
+      return
+    }
+
+    if (status.label.includes('Acierto')) {
+      totalPoints += 1
+      outcomeHits += 1
+    }
+  })
+
+  return {
+    totalPoints,
+    exactHits,
+    outcomeHits,
+  }
+}, [officialResults, predictions])
 
   const handleChange = (
     matchId: string,
@@ -1501,19 +1488,6 @@ useEffect(() => {
             <h1 className="text-3xl font-bold tracking-tight md:text-5xl">
               Fase de grupos
             </h1>
-           <p className="mt-3 max-w-none text-sm leading-6 text-white/70 md:text-base">
-  A continuación ingresa tu pronóstico de marcador para cada uno de los partidos. 
-  Mucha suerte. Tus cambios se guardan automáticamente.
-</p>
-
-<div className="mt-4 max-w-none rounded-2xl border border-red-400/20 bg-red-400/10 p-4">
-  <p className="text-sm leading-6 font-semibold text-red-300">
-    ⚠️ Te recuerdo que tienes hasta 2 horas antes de que empiece el partido inaugural.
-  </p>
-  <p className="mt-2 text-sm leading-6 font-bold text-red-400 underline">
-    Después de esta hora, todos los marcadores que no hayas metido automáticamente se tendrán por “0”.
-  </p>
-</div>
           </div>
 
           <div className="grid w-full max-w-[320px] gap-3">
@@ -1540,85 +1514,47 @@ useEffect(() => {
       ? '✅ Ya capturaste todos tus pronósticos.'
       : `⚠️ Te faltan ${totalPending} partidos por capturar.`}
   </div>
+
+  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-200">
+    ✅ Quiniela pagada
+  </div>
 </div>
         </div>
 
-<div className="mt-6 rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
-  <p className="text-xs font-bold uppercase tracking-[0.22em] text-yellow-300">
-    Pago de quiniela
-  </p>
+        <section className="mt-8 rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black p-6 text-center shadow-[0_0_35px_rgba(250,204,21,0.14)]">
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300/80">
+            Puntos actuales
+          </p>
 
-  <h2 className="mt-2 text-2xl font-black text-white md:text-3xl">
-    Costo: {formatCurrencyMXN(ENTRY_PRICE)}
-  </h2>
+          <h2 className="mt-3 text-5xl font-black tracking-tight text-yellow-400 md:text-7xl">
+            {currentPointsSummary.totalPoints}
+          </h2>
 
-  <p className="mt-2 text-sm text-white/65">
-    De este monto, {formatCurrencyMXN(PRIZE_CONTRIBUTION_PER_ENTRY)} integran la bolsa y {formatCurrencyMXN(ADMIN_FEE_PER_ENTRY)} son gastos de administración.
-  </p>
+          <p className="mt-2 text-sm font-semibold text-white/65 md:text-base">
+            puntos que actualmente llevas ganados
+          </p>
 
-  {activeEntryPaymentStatus === 'paid' || activeEntryPaymentStatus === 'exempt' ? (
-  <div
-    className={`mt-5 w-full rounded-2xl border px-6 py-5 text-center shadow-[0_0_28px_rgba(16,185,129,0.16)] ${
-      activeEntryPaymentStatus === 'paid'
-        ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100'
-        : 'border-sky-400/25 bg-sky-400/10 text-sky-100'
-    }`}
-  >
-    <p className="text-lg font-black md:text-xl">
-      {activeEntryPaymentStatus === 'paid' ? '✅ Quiniela pagada' : '🛡️ Quiniela exenta'}
-    </p>
-    <p className="mt-2 text-sm opacity-80">
-      {activeEntryPaymentStatus === 'paid'
-        ? 'Tu pago quedó registrado correctamente.'
-        : 'Esta quiniela fue marcada como exenta por administración.'}
-    </p>
-  </div>
-) : (
-<div className="mt-5 w-full rounded-2xl border border-red-400/25 bg-red-400/10 px-6 py-5 text-center text-red-100">
-  <p className="text-lg font-black md:text-xl">🔒 Pago cerrado</p>
-  <p className="mt-2 text-sm opacity-80">
-    El periodo para pagar quinielas terminó el 10 de junio de 2026 a las 11:59 PM (CDMX).
-  </p>
-</div>
-)}
-</div>
+          <div className="mx-auto mt-5 grid max-w-xl gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">
+                Exactos
+              </p>
+              <p className="mt-1 text-2xl font-bold text-emerald-100">
+                {currentPointsSummary.exactHits}
+              </p>
+            </div>
 
-<div className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/[0.03] p-6 shadow-2xl text-center">
-  
-  <p className="mb-3 text-sm font-bold text-red-400 animate-pulse">
-  ⚠️ Recuerda que puedes modificar tus picks hasta el cierre de pronósticos
-</p>
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/70">
+                Aciertos
+              </p>
+              <p className="mt-1 text-2xl font-bold text-amber-100">
+                {currentPointsSummary.outcomeHits}
+              </p>
+            </div>
+          </div>
+        </section>
 
-<p className="text-xs uppercase tracking-[0.22em] text-white/45">
-    Cierre de pronósticos
-  </p>
-
-  <h2
-  className={`mt-2 text-3xl md:text-4xl font-bold ${
-    timeLeft.level === 'danger'
-      ? 'text-red-500 animate-pulse'
-      : timeLeft.level === 'warning'
-      ? 'text-amber-400'
-      : 'text-white'
-  }`}
->
-  {timeLeft.text}
-</h2>
-
-  <p className="mt-2 text-sm text-white/60">
-    11 de junio 2026 · 10:00 AM (CDMX)
-  </p>
-  {isGlobalLock && (
-  <>
-    <p className="mt-3 text-sm font-bold text-red-400 underline">
-      La captura de pronósticos ya está cerrada. Todos los marcadores no ingresados se tomarán como “0”.
-    </p>
-    <p className="mt-2 text-xs font-semibold text-red-300">
-      Los ceros automáticos aparecerán en rojo para distinguirlos de los ceros capturados manualmente.
-    </p>
-  </>
-)}
-</div>
         <div className="mt-8 space-y-8">
           {Object.entries(groupedMatches).map(([groupName, matches]) => (
             <section key={groupName}>
@@ -1808,7 +1744,7 @@ useEffect(() => {
   </div>
 )}
 <p className="text-center text-xs text-white/40">
-  Tus cambios se guardan automáticamente
+  Consulta tus pronósticos registrados
 </p>
   </div>
 </div>
@@ -4573,14 +4509,6 @@ export default function Home() {
   const [user, setUser] = useState<UserState>(null)
   const [showTutorialModal, setShowTutorialModal] = useState(false)
   const [showTutorialVideo, setShowTutorialVideo] = useState(false)
-  const [publicPrizePool, setPublicPrizePool] = useState(GUARANTEED_PRIZE_POOL)
-const [publicPrizePoolLoading, setPublicPrizePoolLoading] = useState(true)
-const [animatedPrize, setAnimatedPrize] = useState(GUARANTEED_PRIZE_POOL)
-
-  const canViewPublic =
-    user?.role === 'admin' ||
-    new Date() >= PUBLIC_REVEAL_DATE
-
   const [landingEmail, setLandingEmail] = useState('')
 const [landingPassword, setLandingPassword] = useState('')
 const [landingFirstName, setLandingFirstName] = useState('')
@@ -4636,84 +4564,6 @@ const dismissTutorialForCurrentUser = () => {
 
   setShowTutorialModal(false)
 }
-useEffect(() => {
-  let mounted = true
-
-  const loadPublicPrizePool = async () => {
-    try {
-      const res = await fetch('/api/public/prize-pool')
-
-      if (!res.ok) {
-        if (!mounted) return
-        setPublicPrizePool(GUARANTEED_PRIZE_POOL)
-        setPublicPrizePoolLoading(false)
-        return
-      }
-
-      const data = await res.json()
-      const nextPrizePool = Number(data?.displayPrizePool ?? GUARANTEED_PRIZE_POOL)
-
-      if (!mounted) return
-
-      setPublicPrizePool(nextPrizePool)
-      setPublicPrizePoolLoading(false)
-    } catch (err) {
-      console.error('Error cargando bolsa pública:', err)
-
-      if (!mounted) return
-      setPublicPrizePool(GUARANTEED_PRIZE_POOL)
-      setPublicPrizePoolLoading(false)
-    }
-  }
-
-  loadPublicPrizePool()
-
-  const interval = window.setInterval(loadPublicPrizePool, 10000)
-
-  const channel = supabase
-    .channel('public-prize-pool-live')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'entries' },
-      loadPublicPrizePool
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'payments' },
-      loadPublicPrizePool
-    )
-    .subscribe()
-
-  return () => {
-    mounted = false
-    window.clearInterval(interval)
-    supabase.removeChannel(channel)
-  }
-}, [])
-
-useEffect(() => {
-  let start = animatedPrize
-  let end = publicPrizePool
-
-  if (start === end) return
-
-  const duration = 800
-  const startTime = Date.now()
-
-  const animate = () => {
-    const now = Date.now()
-    const progress = Math.min((now - startTime) / duration, 1)
-
-    const value = Math.floor(start + (end - start) * progress)
-    setAnimatedPrize(value)
-
-    if (progress < 1) {
-      requestAnimationFrame(animate)
-    }
-  }
-
-  animate()
-}, [publicPrizePool])
 
 async function upsertLandingProfile(userId: string, userEmail: string) {
   const cleanFirstName = landingFirstName.trim()
@@ -5324,7 +5174,7 @@ if ((data?.length ?? 0) > 0) {
   return
 }
 
-// Registro cerrado: ya no se crean quinielas automáticamente para usuarios sin pago/registro.
+// Ya no se crean quinielas automáticamente para usuarios sin registro previo.
 setActiveEntryId(null)
 setEntries([])
 return
@@ -5393,9 +5243,6 @@ return
     window.location.href = '/'
   }
 
-  const handleCreateEntry = async () => {
-    alert(REGISTRATION_CLOSED_MESSAGE)
-  }
 
   const handleChangeActiveEntry = async (entryId: string) => {
     if (!user?.id) return
@@ -5440,11 +5287,6 @@ return
   const handleDeleteActiveEntry = async () => {
     alert('El borrado de quinielas activas ya está desactivado.')
   }
-  const activeEntry = entries.find((entry) => entry.id === activeEntryId) ?? null
-  const activeEntryPaymentStatus = activeEntry?.payment_status ?? 'pending'
-  const activeEntryPaymentAmount = Number(activeEntry?.payment_amount ?? 0)
-  const activeEntryPendingAmount = Math.max(ENTRY_PRICE - activeEntryPaymentAmount, 0)
-
   if (!user) {
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-black text-white">
@@ -5592,7 +5434,6 @@ return
   return (
     <PicksScreen
       activeEntryId={activeEntryId}
-      activeEntryPaymentStatus={activeEntryPaymentStatus}
       predictions={predictions}
       setPredictions={setPredictions}
       onBack={() => openView('dashboard')}
@@ -5969,117 +5810,34 @@ if (view === 'admin') {
                   </select>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-                        Estatus de pago
-                      </p>
-                      <p className="mt-2 text-sm font-bold text-white">
-                        {getPaymentStatusLabel(activeEntryPaymentStatus)}
-                      </p>
-                    </div>
-
-                    <span className={`shrink-0 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getPaymentStatusClass(activeEntryPaymentStatus)}`}>
-                      {getPaymentStatusLabel(activeEntryPaymentStatus)}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
-                        Pagado
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-white">
-                        {formatCurrencyMXN(activeEntryPaymentAmount)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
-                        Pendiente
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-white">
-                        {activeEntryPaymentStatus === 'paid' || activeEntryPaymentStatus === 'exempt'
-                          ? formatCurrencyMXN(0)
-                          : formatCurrencyMXN(activeEntryPendingAmount)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-xs leading-5 text-white/50">
-                    Límite de pago: 10 de junio de 2026 · 11:59 PM (CDMX).
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                <button
-                  type="button"
-                  onClick={handleCreateEntry}
-                  disabled
-                  className="w-full cursor-not-allowed rounded-2xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100 opacity-80"
-                >
-                  🔒 Registro cerrado
-                </button>
               </div>
             </aside>
           </div>
         </header>
 
 <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-  {/* TUTORIAL + BOLSA SOLO PLAYER */}
+  {/* JACKPOT SOLO PLAYER */}
   {user.role !== 'admin' && (
     <div className="order-1 md:order-1 md:col-span-2">
-      <div className="grid gap-4">
-        <button
-          type="button"
-          onClick={openTutorialVideo}
-          className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
-        >
-          🎥 Ver tutorial
-        </button>
+      <div className="relative w-full overflow-hidden rounded-[2rem] border border-yellow-400/35 bg-gradient-to-br from-yellow-300/15 via-black to-yellow-700/10 px-5 py-6 text-center shadow-[0_0_45px_rgba(250,204,21,0.22)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.22),transparent_45%)]" />
+        <div className="absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.95)]" />
 
-        <div className="relative w-full overflow-hidden rounded-[2rem] border border-yellow-400/35 bg-gradient-to-br from-yellow-300/15 via-black to-yellow-700/10 px-5 py-6 text-center shadow-[0_0_45px_rgba(250,204,21,0.22)]">
-  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.22),transparent_45%)]" />
-  <div className="absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.95)]" />
+        <div className="relative z-10">
+          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-200">
+            <span className="animate-pulse">💰</span>
+            Jackpot Mundialista
+            <span className="animate-pulse">💰</span>
+          </div>
 
-  <div className="relative z-10">
-    <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-200">
-      <span className="animate-pulse">💰</span>
-      Jackpot Mundialista
-      <span className="animate-pulse">💰</span>
-    </div>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
+            La bolsa real acumulada para nuestra quiniela fue la cantidad total de
+          </p>
 
-    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
-      Bolsa real acumulada al día de hoy
-    </p>
-
-    <p className="mt-3 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-4xl font-black tracking-tight text-transparent drop-shadow-[0_0_20px_rgba(250,204,21,0.35)] md:text-6xl">
-      {publicPrizePoolLoading ? '...' : formatCurrencyMXN(animatedPrize)}
-    </p>
-
-    <p className="mx-auto mt-3 max-w-md text-xs font-semibold leading-5 text-white/55">
-      La bolsa garantizada es de {formatCurrencyMXN(GUARANTEED_PRIZE_POOL)} y puede crecer conforme entren más quinielas pagadas.
-    </p>
-
-    <div className="mx-auto mt-5 h-2 max-w-md overflow-hidden rounded-full border border-yellow-400/20 bg-black/50">
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 shadow-[0_0_18px_rgba(250,204,21,0.75)] transition-all duration-700"
-        style={{
-          width: `${Math.min(
-            100,
-            Math.max(12, (publicPrizePool / GUARANTEED_PRIZE_POOL) * 100)
-          )}%`,
-        }}
-      />
-    </div>
-
-    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300/55">
-      Premio garantizado · Súper Quiniela Mundial 2026
-    </p>
-  </div>
-</div>
+          <p className="mt-3 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-4xl font-black tracking-tight text-transparent drop-shadow-[0_0_20px_rgba(250,204,21,0.35)] md:text-6xl">
+            $354,200.00
+          </p>
+        </div>
       </div>
     </div>
   )}
@@ -6088,7 +5846,7 @@ if (view === 'admin') {
   <div className={`${user.role === 'admin' ? 'order-2' : 'order-2'} md:order-2`}>
     <DashboardCard
       title="Mi Quiniela"
-      description="Aquí puedes acceder a tu Quiniela y llenar cada uno de tus marcadores. ¡Suerte!"
+      description="Aquí puedes acceder a tu quiniela. ¡Suerte!"
       badge="Jugador"
       onClick={() => openView('picks')}
     />
@@ -6144,6 +5902,19 @@ if (view === 'admin') {
     />
   </div>
 
+  {/* TUTORIAL SOLO PLAYER */}
+  {user.role !== 'admin' && (
+    <div className="order-8 md:order-8 md:col-span-2">
+      <button
+        type="button"
+        onClick={openTutorialVideo}
+        className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+      >
+        🎥 Ver tutorial
+      </button>
+    </div>
+  )}
+
   {/* PANEL ADMIN */}
   {user.role === 'admin' && (
     <div className="order-1 md:order-1 md:col-span-2">
@@ -6169,11 +5940,15 @@ if (view === 'admin') {
 
       <div className="mt-4 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black px-5 py-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
         <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
-          Bolsa real acumulada al día de hoy
+          Jackpot Mundialista
+        </p>
+
+        <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-yellow-300/80">
+          La bolsa real acumulada para nuestra quiniela fue la cantidad total de
         </p>
 
         <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
-          {publicPrizePoolLoading ? '...' : formatCurrencyMXN(animatedPrize)}
+          $354,200.00
         </p>
       </div>
     </div>
