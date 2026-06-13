@@ -78,29 +78,45 @@ export async function GET(req: Request) {
       auth: { persistSession: false },
     })
 
-    const { data, error } = await supabase
-      .from('entries')
-      .select(`
-        id,
-        name,
-        user_id,
-        profiles (
-          full_name,
-          email
-        )
-      `)
-      .order('user_id', { ascending: true })
-      .order('name', { ascending: true })
+    const allRows: any[] = []
+    const pageSize = 1000
+    let from = 0
+    let hasMore = true
 
-    if (error) {
-      console.error('[PUBLIC_ENTRIES] Error:', error.message)
-      return NextResponse.json(
-        { error: 'Error cargando quinielas por participante.' },
-        { status: 500 }
-      )
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('entries')
+        .select(`
+          id,
+          name,
+          user_id,
+          profiles (
+            full_name,
+            email
+          )
+        `)
+        .order('user_id', { ascending: true })
+        .order('name', { ascending: true })
+        .range(from, from + pageSize - 1)
+
+      if (error) {
+        console.error('[PUBLIC_ENTRIES] Error:', error.message)
+        return NextResponse.json(
+          { error: 'Error cargando quinielas por participante.' },
+          { status: 500 }
+        )
+      }
+
+      allRows.push(...(data ?? []))
+
+      if (!data || data.length < pageSize) {
+        hasMore = false
+      } else {
+        from += pageSize
+      }
     }
 
-    return NextResponse.json(data ?? [])
+    return NextResponse.json(allRows)
   } catch (error) {
     console.error('[PUBLIC_ENTRIES] Error interno:', error)
     return NextResponse.json(
