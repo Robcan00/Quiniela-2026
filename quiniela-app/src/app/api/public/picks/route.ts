@@ -78,32 +78,48 @@ export async function GET(req: Request) {
       auth: { persistSession: false },
     })
 
-    const { data, error } = await supabase
-      .from('predictions')
-      .select(`
-        match_id,
-        home_score_predicted,
-        away_score_predicted,
-        entries (
-          id,
-          name,
-          user_id,
-          profiles (
-            full_name,
-            email
-          )
+    const allRows: any[] = []
+const pageSize = 1000
+let from = 0
+let hasMore = true
+
+while (hasMore) {
+  const { data, error } = await supabase
+    .from('predictions')
+    .select(`
+      match_id,
+      home_score_predicted,
+      away_score_predicted,
+      entries (
+        id,
+        name,
+        user_id,
+        profiles (
+          full_name,
+          email
         )
-      `)
-
-    if (error) {
-      console.error('[PUBLIC_PICKS] Error:', error.message)
-      return NextResponse.json(
-        { error: 'Error cargando quinielas públicas.' },
-        { status: 500 }
       )
-    }
+    `)
+    .range(from, from + pageSize - 1)
 
-    return NextResponse.json(data ?? [])
+  if (error) {
+    console.error('[PUBLIC_PICKS] Error:', error.message)
+    return NextResponse.json(
+      { error: 'Error cargando quinielas públicas.' },
+      { status: 500 }
+    )
+  }
+
+  allRows.push(...(data ?? []))
+
+  if (!data || data.length < pageSize) {
+    hasMore = false
+  } else {
+    from += pageSize
+  }
+}
+
+    return NextResponse.json(allRows)
   } catch (error) {
     console.error('[PUBLIC_PICKS] Error interno:', error)
     return NextResponse.json(
