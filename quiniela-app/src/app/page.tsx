@@ -1,329 +1,336 @@
-'use client'
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { supabase } from '@/lib/supabase/supabase'
-import { groupStageMatches, type Match } from '@/data/groupStageMatches'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { supabase } from "@/lib/supabase/supabase";
+import { groupStageMatches, type Match } from "@/data/groupStageMatches";
 
 type UserState = {
-  id: string
-  role: 'admin' | 'player'
-  fullName?: string
-  email?: string
-} | null
+  id: string;
+  role: "admin" | "player";
+  fullName?: string;
+  email?: string;
+} | null;
 
 type ViewMode =
-  | 'dashboard'
-  | 'picks'
-  | 'leaderboard'
-  | 'public'
-  | 'public-by-participant'
-  | 'entry-detail'
-  | 'participant-data'
-  | 'admin'
+  | "dashboard"
+  | "picks"
+  | "leaderboard"
+  | "public"
+  | "public-by-participant"
+  | "entry-detail"
+  | "participant-data"
+  | "admin";
 
 type Prediction = {
-  homeScore: string
-  awayScore: string
-  isAutoZero?: boolean
-}
+  homeScore: string;
+  awayScore: string;
+  isAutoZero?: boolean;
+};
 
 type OfficialResult = {
-  homeScore: string
-  awayScore: string
-}
+  homeScore: string;
+  awayScore: string;
+};
 
 type MatchState = {
-  isOpen: boolean
-  isFinished: boolean
-}
+  isOpen: boolean;
+  isFinished: boolean;
+};
 
 type PublicMatchMetaRow = {
-  id: string
-  home_score: number | null
-  away_score: number | null
-  is_open: boolean | null
-  is_finished: boolean | null
-}
+  id: string;
+  home_score: number | null;
+  away_score: number | null;
+  is_open: boolean | null;
+  is_finished: boolean | null;
+};
 
 type LeaderboardRow = {
-  entry_id?: string
-  user_id: string
-  entry_name?: string
-  full_name: string
-  total_points: number
-  exact_hits: number
-  outcome_hits: number
-  goal_diff?: number
-}
+  entry_id?: string;
+  user_id: string;
+  entry_name?: string;
+  full_name: string;
+  total_points: number;
+  exact_hits: number;
+  outcome_hits: number;
+  goal_diff?: number;
+};
 type EntryRow = {
-  id: string
-  name: string
-  is_active: boolean
-  payment_status?: PaymentStatus | null
-  payment_amount?: number | null
-  payment_method?: string | null
-  payment_reference?: string | null
-  paid_at?: string | null
-}
+  id: string;
+  name: string;
+  is_active: boolean;
+  payment_status?: PaymentStatus | null;
+  payment_amount?: number | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+  paid_at?: string | null;
+};
 type EntryDetailInfo = {
-  id: string
-  name: string
-  user_id: string
+  id: string;
+  name: string;
+  user_id: string;
   profiles?: {
-    full_name?: string
-    email?: string
-  } | null
-}
+    full_name?: string;
+    email?: string;
+  } | null;
+};
 
 type EntryPredictionRow = {
-  match_id: string
-  home_score_predicted: number | null
-  away_score_predicted: number | null
-}
+  match_id: string;
+  home_score_predicted: number | null;
+  away_score_predicted: number | null;
+};
 type PublicEntryRow = {
-  id: string
-  name: string
-  user_id: string
+  id: string;
+  name: string;
+  user_id: string;
   profiles?: {
-    full_name?: string
-    email?: string
-  } | null
-}
+    full_name?: string;
+    email?: string;
+  } | null;
+};
 
 type DashboardCardProps = {
-  title: string
-  description: string
-  badge?: string
-  onClick?: () => void
-}
+  title: string;
+  description: string;
+  badge?: string;
+  onClick?: () => void;
+};
 type ParticipantProfileRow = {
-  id: string
-  email: string | null
-  full_name: string | null
-  first_name: string | null
-  last_name: string | null
-  phone: string | null
-  role: 'admin' | 'player' | null
-}
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  role: "admin" | "player" | null;
+};
 type AdminUserRow = {
-  id: string
-  email: string | null
-  full_name: string | null
-  role: 'admin' | 'player' | null
-}
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  role: "admin" | "player" | null;
+};
 
-type PaymentStatus = 'pending' | 'partial' | 'paid' | 'exempt'
+type PaymentStatus = "pending" | "partial" | "paid" | "exempt";
 
 type AdminPaymentEntryRow = {
-  id: string
-  name: string
-  user_id: string
-  payment_status: PaymentStatus | null
-  payment_amount: number | null
-  payment_method: string | null
-  payment_reference: string | null
-  paid_at: string | null
+  id: string;
+  name: string;
+  user_id: string;
+  payment_status: PaymentStatus | null;
+  payment_amount: number | null;
+  payment_method: string | null;
+  payment_reference: string | null;
+  paid_at: string | null;
   profiles?: {
-    full_name?: string | null
-    email?: string | null
-    phone?: string | null
-  } | null
-}
+    full_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
+};
 
 type PersonalRankInfo = {
-  position: number | null
-  total_points: number
-  exact_hits: number
-  outcome_hits: number
-}
+  position: number | null;
+  total_points: number;
+  exact_hits: number;
+  outcome_hits: number;
+};
 
 type FinanceSummary = {
-  totalEntries: number
-  paidEntries: number
-  pendingEntries: number
-  exemptEntries: number
-  totalCollected: number
-  mercadopagoCollected: number
-  adminFees: number
-  prizeContribution: number
-  prizePool: number
-  guaranteedPrizePool: number
-  expectedTotal: number
-  approvedPaymentsCount: number
+  totalEntries: number;
+  paidEntries: number;
+  pendingEntries: number;
+  exemptEntries: number;
+  totalCollected: number;
+  mercadopagoCollected: number;
+  adminFees: number;
+  prizeContribution: number;
+  prizePool: number;
+  guaranteedPrizePool: number;
+  expectedTotal: number;
+  approvedPaymentsCount: number;
   recentPayments: Array<{
-    id: string
-    entry_id: string | null
-    user_id: string | null
-    provider: string
-    provider_payment_id: string
-    status: string
-    amount: number
-    currency: string
-    payment_method: string | null
-    created_at: string
-  }>
-}
+    id: string;
+    entry_id: string | null;
+    user_id: string | null;
+    provider: string;
+    provider_payment_id: string;
+    status: string;
+    amount: number;
+    currency: string;
+    payment_method: string | null;
+    created_at: string;
+  }>;
+};
 
-const MATCHES: Match[] = groupStageMatches
-const PUBLIC_REVEAL_DATE = new Date('2026-06-11T10:00:00-06:00')
-const ENTRY_PRICE = 2500
-const ADMIN_FEE_PER_ENTRY = 200
-const PRIZE_CONTRIBUTION_PER_ENTRY = 2300
-const GUARANTEED_PRIZE_POOL = 300000
-const TUTORIAL_VIDEO_ID = 'EDuCIYgXZtQ'
-const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`
+const MATCHES: Match[] = groupStageMatches;
+const PUBLIC_REVEAL_DATE = new Date("2026-06-11T10:00:00-06:00");
+const ENTRY_PRICE = 2500;
+const ADMIN_FEE_PER_ENTRY = 200;
+const PRIZE_CONTRIBUTION_PER_ENTRY = 2300;
+const GUARANTEED_PRIZE_POOL = 300000;
+const TUTORIAL_VIDEO_ID = "EDuCIYgXZtQ";
+const TUTORIAL_EMBED_URL = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?autoplay=1&playsinline=1&rel=0`;
 
-const GROUP_STAGE_ORDER = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D', 'Grupo E', 'Grupo F', 'Grupo G', 'Grupo H']
+const GROUP_STAGE_ORDER = [
+  "Grupo A",
+  "Grupo B",
+  "Grupo C",
+  "Grupo D",
+  "Grupo E",
+  "Grupo F",
+  "Grupo G",
+  "Grupo H",
+];
 
 function sortGroupStageEntries<T>(entries: Array<[string, T]>) {
   return entries.sort(([groupA], [groupB]) => {
-    const indexA = GROUP_STAGE_ORDER.indexOf(groupA)
-    const indexB = GROUP_STAGE_ORDER.indexOf(groupB)
+    const indexA = GROUP_STAGE_ORDER.indexOf(groupA);
+    const indexB = GROUP_STAGE_ORDER.indexOf(groupB);
 
-    if (indexA !== -1 && indexB !== -1) return indexA - indexB
-    if (indexA !== -1) return -1
-    if (indexB !== -1) return 1
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
 
-    return groupA.localeCompare(groupB, 'es', { sensitivity: 'base' })
-  })
+    return groupA.localeCompare(groupB, "es", { sensitivity: "base" });
+  });
 }
 
-
 function scrollToPageTop() {
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return;
 
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
   window.requestAnimationFrame(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  })
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
 
   setTimeout(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, 0)
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, 0);
 }
 
 function useScrollToPageTop(deps: React.DependencyList = []) {
   useEffect(() => {
-    scrollToPageTop()
-  }, deps)
+    scrollToPageTop();
+  }, deps);
 }
 
 function getEmailUserName(email?: string | null) {
-  return email?.split('@')[0]?.trim().toLowerCase() || ''
+  return email?.split("@")[0]?.trim().toLowerCase() || "";
 }
 
 function normalizeSearchText(value?: string | null) {
-  return (value || '')
+  return (value || "")
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
 }
 
 function resolveProfileFullName(profile: any, fallbackEmail?: string | null) {
-  const fullName = profile?.full_name?.trim?.() || ''
-  const firstName = profile?.first_name?.trim?.() || ''
-  const lastName = profile?.last_name?.trim?.() || ''
-  const combinedName = `${firstName} ${lastName}`.trim()
-  const emailUserName = getEmailUserName(profile?.email || fallbackEmail)
+  const fullName = profile?.full_name?.trim?.() || "";
+  const firstName = profile?.first_name?.trim?.() || "";
+  const lastName = profile?.last_name?.trim?.() || "";
+  const combinedName = `${firstName} ${lastName}`.trim();
+  const emailUserName = getEmailUserName(profile?.email || fallbackEmail);
 
   if (combinedName && fullName.toLowerCase() === emailUserName) {
-    return combinedName
+    return combinedName;
   }
 
-  return fullName || combinedName || emailUserName || 'Jugador'
+  return fullName || combinedName || emailUserName || "Jugador";
 }
 
 function getStoredProfile(userId: string) {
-  if (typeof window === 'undefined') return null
+  if (typeof window === "undefined") return null;
 
   try {
-    const raw = window.localStorage.getItem(`quiniela-profile-${userId}`)
-    return raw ? (JSON.parse(raw) as Partial<ParticipantProfileRow>) : null
+    const raw = window.localStorage.getItem(`quiniela-profile-${userId}`);
+    return raw ? (JSON.parse(raw) as Partial<ParticipantProfileRow>) : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 function storeProfile(userId: string, profile: Partial<ParticipantProfileRow>) {
-  if (typeof window === 'undefined') return
+  if (typeof window === "undefined") return;
 
   try {
-    window.localStorage.setItem(`quiniela-profile-${userId}`, JSON.stringify(profile))
+    window.localStorage.setItem(
+      `quiniela-profile-${userId}`,
+      JSON.stringify(profile),
+    );
   } catch {
     // noop
   }
 }
-
 
 async function getSafeAuthSession() {
   try {
     const {
       data: { session },
       error,
-    } = await supabase.auth.getSession()
+    } = await supabase.auth.getSession();
 
     if (session?.user && session?.access_token) {
-      return session
+      return session;
     }
 
     if (error) {
-      console.warn('No se pudo obtener la sesión actual:', error.message)
+      console.warn("No se pudo obtener la sesión actual:", error.message);
     }
 
     const {
       data: { session: refreshedSession },
       error: refreshError,
-    } = await supabase.auth.refreshSession()
+    } = await supabase.auth.refreshSession();
 
     if (refreshError) {
-      console.warn('No se pudo refrescar la sesión:', refreshError.message)
-      return null
+      console.warn("No se pudo refrescar la sesión:", refreshError.message);
+      return null;
     }
 
-    return refreshedSession ?? null
+    return refreshedSession ?? null;
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error desconocido'
-    console.warn('Sesión inválida o expirada:', message)
-    return null
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    console.warn("Sesión inválida o expirada:", message);
+    return null;
   }
 }
 
 async function getSafeAccessToken() {
-  const session = await getSafeAuthSession()
-  return session?.access_token ?? null
+  const session = await getSafeAuthSession();
+  return session?.access_token ?? null;
 }
 
-
-
 function getWhatsAppLink(user?: UserState, activeEntryId?: string | null) {
-  const base = 'https://wa.me/17542991555'
+  const base = "https://wa.me/17542991555";
 
-  let message = 'Hola, tengo una duda sobre la quiniela'
+  let message = "Hola, tengo una duda sobre la quiniela";
 
   if (user) {
     message = `Hola, tengo una duda sobre mi quiniela
 
-Nombre: ${user.fullName || 'N/A'}
-Email: ${user.email || 'N/A'}
-Quiniela ID: ${activeEntryId || 'N/A'}`
+Nombre: ${user.fullName || "N/A"}
+Email: ${user.email || "N/A"}
+Quiniela ID: ${activeEntryId || "N/A"}`;
   }
 
-  return `${base}?text=${encodeURIComponent(message)}`
+  return `${base}?text=${encodeURIComponent(message)}`;
 }
-
 
 function WhatsAppSupportButton({
   user,
   activeEntryId,
 }: {
-  user?: UserState
-  activeEntryId?: string | null
+  user?: UserState;
+  activeEntryId?: string | null;
 }) {
-  if (user?.role === 'admin') return null
+  if (user?.role === "admin") return null;
 
   return (
     <a
@@ -331,16 +338,16 @@ function WhatsAppSupportButton({
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-green-500 px-4 py-2 text-xs font-bold text-white shadow-2xl transition hover:bg-green-600 active:scale-[0.98] sm:gap-3 sm:px-5 sm:py-3 sm:text-sm"
-      style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       <img
-  src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-  alt="WhatsApp"
-  className="h-6 w-6"
-/>
-<span>Soporte</span>
+        src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+        alt="WhatsApp"
+        className="h-6 w-6"
+      />
+      <span>Soporte</span>
     </a>
-  )
+  );
 }
 
 function TutorialWelcomeModal({
@@ -349,12 +356,12 @@ function TutorialWelcomeModal({
   onLater,
   onNeverShowAgain,
 }: {
-  isOpen: boolean
-  onWatchTutorial: () => void
-  onLater: () => void
-  onNeverShowAgain: () => void
+  isOpen: boolean;
+  onWatchTutorial: () => void;
+  onLater: () => void;
+  onNeverShowAgain: () => void;
 }) {
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-md">
@@ -376,7 +383,8 @@ function TutorialWelcomeModal({
           </h2>
 
           <p className="mx-auto mt-4 max-w-md text-center text-sm leading-6 text-white/65">
-            Te explicamos cómo usar la app, llenar tus picks, pagar tu quiniela y revisar resultados.
+            Te explicamos cómo usar la app, llenar tus picks, pagar tu quiniela
+            y revisar resultados.
           </p>
 
           <div className="mt-7 grid gap-3">
@@ -407,17 +415,17 @@ function TutorialWelcomeModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function TutorialVideoModal({
   isOpen,
   onClose,
 }: {
-  isOpen: boolean
-  onClose: () => void
+  isOpen: boolean;
+  onClose: () => void;
 }) {
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 px-4 py-6 backdrop-blur-md">
@@ -445,42 +453,44 @@ function TutorialVideoModal({
           </div>
 
           <div className="mx-auto h-[80vh] w-full max-w-[430px] overflow-hidden rounded-2xl border border-white/10 bg-black">
-  <iframe
-    className="h-full w-full"
-    src={TUTORIAL_EMBED_URL}
-    title="Tutorial Súper Quiniela 2026"
-    referrerPolicy="strict-origin-when-cross-origin"
-    allow="autoplay; encrypted-media; picture-in-picture; web-share"
-    allowFullScreen
-  />
-</div>
+            <iframe
+              className="h-full w-full"
+              src={TUTORIAL_EMBED_URL}
+              title="Tutorial Súper Quiniela 2026"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allow="autoplay; encrypted-media; picture-in-picture; web-share"
+              allowFullScreen
+            />
           </div>
         </div>
       </div>
-  
-  )
+    </div>
+  );
 }
 
 function formatCurrencyMXN(amount: number) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(amount);
 }
 
 function getPaymentStatusLabel(status?: PaymentStatus | null) {
-  if (status === 'paid') return 'Pagado'
-  if (status === 'partial') return 'Parcial'
-  if (status === 'exempt') return 'Exento'
-  return 'Pendiente'
+  if (status === "paid") return "Pagado";
+  if (status === "partial") return "Parcial";
+  if (status === "exempt") return "Exento";
+  return "Pendiente";
 }
 
 function getPaymentStatusClass(status?: PaymentStatus | null) {
-  if (status === 'paid') return 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-  if (status === 'partial') return 'border-amber-400/20 bg-amber-400/10 text-amber-200'
-  if (status === 'exempt') return 'border-sky-400/20 bg-sky-400/10 text-sky-200'
-  return 'border-red-400/20 bg-red-400/10 text-red-200'
+  if (status === "paid")
+    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200";
+  if (status === "partial")
+    return "border-amber-400/20 bg-amber-400/10 text-amber-200";
+  if (status === "exempt")
+    return "border-sky-400/20 bg-sky-400/10 text-sky-200";
+  return "border-red-400/20 bg-red-400/10 text-red-200";
 }
 
 function PublicRevealLockedCard() {
@@ -495,7 +505,9 @@ function PublicRevealLockedCard() {
       </h2>
 
       <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
-        Para mantener la competencia justa, las quinielas de los demás participantes estarán ocultas hasta que cierre la captura de pronósticos.
+        Para mantener la competencia justa, las quinielas de los demás
+        participantes estarán ocultas hasta que cierre la captura de
+        pronósticos.
       </p>
 
       <div className="mx-auto mt-6 max-w-md rounded-2xl border border-white/10 bg-black/30 px-5 py-4">
@@ -507,10 +519,15 @@ function PublicRevealLockedCard() {
         </p>
       </div>
     </div>
-  )
+  );
 }
 
-function DashboardCard({ title, description, badge, onClick }: DashboardCardProps) {
+function DashboardCard({
+  title,
+  description,
+  badge,
+  onClick,
+}: DashboardCardProps) {
   return (
     <div className="flex h-full min-h-[230px] flex-col justify-between rounded-2xl border border-yellow-400/20 bg-white/5 p-4 shadow-xl transition hover:border-yellow-400/40 hover:bg-yellow-400/10 sm:min-h-[240px] md:min-h-[250px]">
       <div className="min-w-0">
@@ -526,9 +543,7 @@ function DashboardCard({ title, description, badge, onClick }: DashboardCardProp
           )}
         </div>
 
-        <p className="mt-3 text-sm leading-6 text-white/65">
-          {description}
-        </p>
+        <p className="mt-3 text-sm leading-6 text-white/65">{description}</p>
       </div>
 
       <button
@@ -538,16 +553,16 @@ function DashboardCard({ title, description, badge, onClick }: DashboardCardProp
         Abrir
       </button>
     </div>
-  )
+  );
 }
 
 function parseKickoffToDate(kickoff: string) {
-  const clean = kickoff.replace(' (Hora CDMX)', '')
-  const [datePart, timePart] = clean.split(' · ')
-  if (!datePart || !timePart) return null
+  const clean = kickoff.replace(" (Hora CDMX)", "");
+  const [datePart, timePart] = clean.split(" · ");
+  if (!datePart || !timePart) return null;
 
-  const [dayStr, monthStr, yearStr] = datePart.split(' ')
-  const [hourStr, minuteStr] = timePart.split(':')
+  const [dayStr, monthStr, yearStr] = datePart.split(" ");
+  const [hourStr, minuteStr] = timePart.split(":");
 
   const months: Record<string, number> = {
     ene: 0,
@@ -562,13 +577,13 @@ function parseKickoffToDate(kickoff: string) {
     oct: 9,
     nov: 10,
     dic: 11,
-  }
+  };
 
-  const day = Number(dayStr)
-  const month = months[monthStr?.toLowerCase()]
-  const year = Number(yearStr)
-  const hour = Number(hourStr)
-  const minute = Number(minuteStr)
+  const day = Number(dayStr);
+  const month = months[monthStr?.toLowerCase()];
+  const year = Number(yearStr);
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
 
   if (
     Number.isNaN(day) ||
@@ -577,185 +592,216 @@ function parseKickoffToDate(kickoff: string) {
     Number.isNaN(hour) ||
     Number.isNaN(minute)
   ) {
-    return null
+    return null;
   }
 
-  return new Date(year, month, day, hour, minute)
+  return new Date(year, month, day, hour, minute);
 }
 
 function getTimeLock(kickoff: string) {
-  const kickoffDate = parseKickoffToDate(kickoff)
-  if (!kickoffDate) return false
-  return new Date() >= kickoffDate
+  const kickoffDate = parseKickoffToDate(kickoff);
+  if (!kickoffDate) return false;
+  return new Date() >= kickoffDate;
 }
 
 function getPickStatus(prediction: Prediction, official: OfficialResult) {
   if (
-    prediction.homeScore === '' ||
-    prediction.awayScore === '' ||
-    official.homeScore === '' ||
-    official.awayScore === ''
+    prediction.homeScore === "" ||
+    prediction.awayScore === "" ||
+    official.homeScore === "" ||
+    official.awayScore === ""
   ) {
-    return null
+    return null;
   }
 
-  const ph = Number(prediction.homeScore)
-  const pa = Number(prediction.awayScore)
-  const oh = Number(official.homeScore)
-  const oa = Number(official.awayScore)
+  const ph = Number(prediction.homeScore);
+  const pa = Number(prediction.awayScore);
+  const oh = Number(official.homeScore);
+  const oa = Number(official.awayScore);
 
-  const exact = ph === oh && pa === oa
-  const predictedOutcome = ph > pa ? 'home' : ph < pa ? 'away' : 'draw'
-  const officialOutcome = oh > oa ? 'home' : oh < oa ? 'away' : 'draw'
+  const exact = ph === oh && pa === oa;
+  const predictedOutcome = ph > pa ? "home" : ph < pa ? "away" : "draw";
+  const officialOutcome = oh > oa ? "home" : oh < oa ? "away" : "draw";
 
   if (exact) {
     return {
-      label: '✅ Exacto',
-      detail: '3 puntos',
-      className: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100',
-    }
+      label: "✅ Exacto",
+      detail: "3 puntos",
+      className: "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
+    };
   }
 
   if (predictedOutcome === officialOutcome) {
     return {
-      label: '🟡 Acierto',
-      detail: '1 punto',
-      className: 'border-amber-400/20 bg-amber-400/10 text-amber-100',
-    }
+      label: "🟡 Acierto",
+      detail: "1 punto",
+      className: "border-amber-400/20 bg-amber-400/10 text-amber-100",
+    };
   }
 
   return {
-    label: '❌ Fallaste',
-    detail: '0 puntos',
-    className: 'border-red-400/20 bg-red-400/10 text-red-100',
-  }
+    label: "❌ Fallaste",
+    detail: "0 puntos",
+    className: "border-red-400/20 bg-red-400/10 text-red-100",
+  };
 }
 
 function LeaderboardScreen({
   onBack,
   currentUser,
+  onOpenEntry,
 }: {
-  onBack: () => void
-  currentUser: UserState
+  onBack: () => void;
+  currentUser: UserState;
+  onOpenEntry: (entryId: string) => void;
 }) {
-  const [rows, setRows] = useState<LeaderboardRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [hasOfficialResults, setHasOfficialResults] = useState(false)
+  const [rows, setRows] = useState<LeaderboardRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasOfficialResults, setHasOfficialResults] = useState(false);
 
-  useScrollToPageTop([])
+  useScrollToPageTop([]);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const loadLeaderboard = async () => {
-  const [{ data, error }, { data: matchesData, error: matchesError }] =
-    await Promise.all([
-      supabase
-        .from('leaderboard')
-        .select('*')
-        .order('total_points', { ascending: false })
-        .order('exact_hits', { ascending: false })
-        .order('goal_diff', { ascending: true }),
+      const [{ data, error }, { data: matchesData, error: matchesError }] =
+        await Promise.all([
+          supabase
+            .from("leaderboard")
+            .select("*")
+            .order("total_points", { ascending: false })
+            .order("exact_hits", { ascending: false })
+            .order("goal_diff", { ascending: true }),
 
-      supabase
-        .from('matches')
-        .select('id, home_score, away_score')
-        .not('home_score', 'is', null)
-        .not('away_score', 'is', null)
-        .limit(1),
-    ])
+          supabase
+            .from("matches")
+            .select("id, home_score, away_score")
+            .not("home_score", "is", null)
+            .not("away_score", "is", null)
+            .limit(1),
+        ]);
 
-  if (!mounted) return
+      if (!mounted) return;
 
-  if (matchesError) {
-    console.error('Error revisando resultados oficiales:', matchesError.message)
-    setHasOfficialResults(false)
-  } else {
-    setHasOfficialResults((matchesData ?? []).length > 0)
-  }
+      if (matchesError) {
+        console.error(
+          "Error revisando resultados oficiales:",
+          matchesError.message,
+        );
+        setHasOfficialResults(false);
+      } else {
+        setHasOfficialResults((matchesData ?? []).length > 0);
+      }
 
-  if (error) {
-    console.error('Error cargando leaderboard:', error.message)
-    setRows([])
-  } else {
-    setRows((data as LeaderboardRow[]) ?? [])
-  }
+      if (error) {
+        console.error("Error cargando leaderboard:", error.message);
+        setRows([]);
+      } else {
+        setRows((data as LeaderboardRow[]) ?? []);
+      }
 
-  setLoading(false)
-}
+      setLoading(false);
+    };
 
-    loadLeaderboard()
+    loadLeaderboard();
 
     const channel = supabase
-      .channel('leaderboard-refresh')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, loadLeaderboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, loadLeaderboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, loadLeaderboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, loadLeaderboard)
-      .subscribe()
+      .channel("leaderboard-refresh")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "predictions" },
+        loadLeaderboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        loadLeaderboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entries" },
+        loadLeaderboard,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        loadLeaderboard,
+      )
+      .subscribe();
 
     return () => {
-      mounted = false
-      supabase.removeChannel(channel)
-    }
-  }, [])
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const currentUserPosition = hasOfficialResults
     ? rows.findIndex((row) => row.user_id === currentUser?.id) + 1 || null
-    : null
+    : null;
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return '🥇'
-    if (index === 1) return '🥈'
-    if (index === 2) return '🥉'
-    return `#${index + 1}`
-  }
+    if (index === 0) return "🥇";
+    if (index === 1) return "🥈";
+    if (index === 2) return "🥉";
+    return `#${index + 1}`;
+  };
 
   const getLeaderboardRowKey = (row: LeaderboardRow, index: number) =>
-    row.entry_id ?? `${row.user_id}-${row.entry_name ?? 'quiniela'}-${index}`
+    row.entry_id ?? `${row.user_id}-${row.entry_name ?? "quiniela"}-${index}`;
+
+  const handleOpenLeaderboardEntry = (entryId?: string) => {
+    if (!entryId) return;
+    onOpenEntry(entryId);
+  };
 
   const tiebreakerWinnerKeys = useMemo(() => {
     const groups = new Map<
       string,
-      Array<{ row: LeaderboardRow; index: number; key: string; goalDiff: number }>
-    >()
+      Array<{
+        row: LeaderboardRow;
+        index: number;
+        key: string;
+        goalDiff: number;
+      }>
+    >();
 
     rows.forEach((row, index) => {
-      if (row.goal_diff == null) return
+      if (row.goal_diff == null) return;
 
-      const groupKey = `${row.total_points}-${row.exact_hits}`
-      const currentGroup = groups.get(groupKey) ?? []
+      const groupKey = `${row.total_points}-${row.exact_hits}`;
+      const currentGroup = groups.get(groupKey) ?? [];
 
       currentGroup.push({
         row,
         index,
         key: getLeaderboardRowKey(row, index),
         goalDiff: row.goal_diff,
-      })
+      });
 
-      groups.set(groupKey, currentGroup)
-    })
+      groups.set(groupKey, currentGroup);
+    });
 
-    const winners = new Set<string>()
+    const winners = new Set<string>();
 
     groups.forEach((group) => {
-      if (group.length < 2) return
+      if (group.length < 2) return;
 
-      const bestGoalDiff = Math.min(...group.map((item) => item.goalDiff))
-      const bestRows = group.filter((item) => item.goalDiff === bestGoalDiff)
+      const bestGoalDiff = Math.min(...group.map((item) => item.goalDiff));
+      const bestRows = group.filter((item) => item.goalDiff === bestGoalDiff);
 
       if (bestRows.length === 1) {
-        winners.add(bestRows[0].key)
+        winners.add(bestRows[0].key);
       }
-    })
+    });
 
-    return winners
-  }, [rows])
+    return winners;
+  }, [rows]);
 
-  const leader = rows[0]
+  const leader = rows[0];
   const leaderWonTiebreaker = leader
     ? tiebreakerWinnerKeys.has(getLeaderboardRowKey(leader, 0))
-    : false
+    : false;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
@@ -779,7 +825,8 @@ function LeaderboardScreen({
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 md:text-base">
-                Posiciones por quiniela, puntos acumulados, marcadores exactos, aciertos y diferencia de goles.
+                Posiciones por quiniela, puntos acumulados, marcadores exactos,
+                aciertos y diferencia de goles.
               </p>
             </div>
 
@@ -788,7 +835,9 @@ function LeaderboardScreen({
                 <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
                   Quinielas
                 </p>
-                <p className="mt-2 text-2xl font-bold text-white">{rows.length}</p>
+                <p className="mt-2 text-2xl font-bold text-white">
+                  {rows.length}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
@@ -796,7 +845,7 @@ function LeaderboardScreen({
                   Tu posición
                 </p>
                 <p className="mt-2 text-2xl font-bold text-yellow-400">
-                  {currentUserPosition ? `#${currentUserPosition}` : '—'}
+                  {currentUserPosition ? `#${currentUserPosition}` : "—"}
                 </p>
               </div>
             </div>
@@ -816,10 +865,10 @@ function LeaderboardScreen({
                     Líder actual
                   </p>
                   <h2 className="mt-1 truncate text-xl font-bold text-white sm:text-2xl">
-                    {leader.full_name || 'Participante'}
+                    {leader.full_name || "Participante"}
                   </h2>
                   <p className="truncate text-sm font-semibold text-yellow-300">
-                    {leader.entry_name || 'Quiniela'}
+                    {leader.entry_name || "Quiniela"}
                   </p>
 
                   {leaderWonTiebreaker && (
@@ -863,7 +912,7 @@ function LeaderboardScreen({
                     Dif. goles
                   </p>
                   <p className="mt-2 text-xl font-bold text-yellow-300 sm:text-2xl">
-                    {leader.goal_diff ?? '—'}
+                    {leader.goal_diff ?? "—"}
                   </p>
                 </div>
               </div>
@@ -886,258 +935,303 @@ function LeaderboardScreen({
                   <h2 className="mt-1 text-xl font-bold text-white/35 sm:text-2xl">
                     —
                   </h2>
-                  <p className="text-sm font-semibold text-yellow-300/40">
-                    —
-                  </p>
+                  <p className="text-sm font-semibold text-yellow-300/40">—</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:min-w-[480px]">
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Puntos</p>
-                  <p className="mt-2 text-xl font-bold text-yellow-400/40 sm:text-2xl">—</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    Puntos
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-yellow-400/40 sm:text-2xl">
+                    —
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Exactos</p>
-                  <p className="mt-2 text-xl font-bold text-white/35 sm:text-2xl">—</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    Exactos
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-white/35 sm:text-2xl">
+                    —
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Aciertos</p>
-                  <p className="mt-2 text-xl font-bold text-white/35 sm:text-2xl">—</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                    Aciertos
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-white/35 sm:text-2xl">
+                    —
+                  </p>
                 </div>
                 <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-3 sm:p-4">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">Dif. goles</p>
-                  <p className="mt-2 text-xl font-bold text-yellow-300/40 sm:text-2xl">—</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">
+                    Dif. goles
+                  </p>
+                  <p className="mt-2 text-xl font-bold text-yellow-300/40 sm:text-2xl">
+                    —
+                  </p>
                 </div>
               </div>
             </div>
           </section>
         )}
 
-{!loading && !hasOfficialResults && (
-  <section className="mt-6 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-transparent p-6 text-center shadow-[0_0_40px_rgba(250,204,21,0.10)] sm:p-8">
-    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-3xl">
-      🏆
-    </div>
-
-    <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-yellow-400 sm:text-3xl">
-      Tabla General aún no activa
-    </h2>
-
-    <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
-      La tabla oficial se activará cuando se capture el primer resultado oficial del Mundial 2026.
-    </p>
-
-    <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-white/10 bg-black/30 p-5 text-left">
-      <p className="text-sm font-bold text-white">
-        Mientras tanto:
-      </p>
-
-      <ul className="mt-3 space-y-2 text-sm text-white/65">
-        <li>• No hay posiciones oficiales.</li>
-        <li>• Todos los participantes siguen en cero.</li>
-        <li>• El ranking empezará cuando exista el primer marcador oficial.</li>
-      </ul>
-      
-      <p className="mt-4 text-lg font-bold text-white">
-  Quinielas registradas: {rows.length}
-</p>
-    </div>
-  </section>
-)}
-
-
-        {hasOfficialResults && (
-<section className="mt-6">
-  {loading ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
-              Cargando leaderboard...
+        {!loading && !hasOfficialResults && (
+          <section className="mt-6 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-transparent p-6 text-center shadow-[0_0_40px_rgba(250,204,21,0.10)] sm:p-8">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-3xl">
+              🏆
             </div>
-          ) : rows.length === 0 ? (
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <p className="text-lg font-semibold">Todavía no hay puntos calculados</p>
-              <p className="mt-2 text-sm leading-6 text-white/65">
-                En cuanto captures resultados oficiales y existan picks guardados, aparecerán aquí.
+
+            <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-yellow-400 sm:text-3xl">
+              Tabla General aún no activa
+            </h2>
+
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-white/70 sm:text-base">
+              La tabla oficial se activará cuando se capture el primer resultado
+              oficial del Mundial 2026.
+            </p>
+
+            <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-white/10 bg-black/30 p-5 text-left">
+              <p className="text-sm font-bold text-white">Mientras tanto:</p>
+
+              <ul className="mt-3 space-y-2 text-sm text-white/65">
+                <li>• No hay posiciones oficiales.</li>
+                <li>• Todos los participantes siguen en cero.</li>
+                <li>
+                  • El ranking empezará cuando exista el primer marcador
+                  oficial.
+                </li>
+              </ul>
+
+              <p className="mt-4 text-lg font-bold text-white">
+                Quinielas registradas: {rows.length}
               </p>
             </div>
-          ) : (
-            <>
-              {/* MOBILE CARDS */}
-              <div className="space-y-3 md:hidden">
-                {rows.map((row, index) => {
-                  const isCurrentUser = row.user_id === currentUser?.id
-                  const wonTiebreaker = tiebreakerWinnerKeys.has(
-                    getLeaderboardRowKey(row, index)
-                  )
+          </section>
+        )}
 
-                  return (
-                    <article
-                      key={row.entry_id ?? `${row.user_id}-${index}`}
-                      className={`rounded-3xl border p-4 shadow-xl transition duration-200 active:scale-[0.99] ${
-                        isCurrentUser
-                          ? 'border-emerald-400/30 bg-emerald-400/10'
-                          : 'border-white/10 bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div
-                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg font-black ${
-                              index <= 2
-                                ? 'border-yellow-400/30 bg-yellow-400/10 text-2xl'
-                                : 'border-white/10 bg-black/30 text-yellow-400'
-                            }`}
-                          >
-                            {getRankIcon(index)}
-                          </div>
+        {hasOfficialResults && (
+          <section className="mt-6">
+            {loading ? (
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
+                Cargando leaderboard...
+              </div>
+            ) : rows.length === 0 ? (
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+                <p className="text-lg font-semibold">
+                  Todavía no hay puntos calculados
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/65">
+                  En cuanto captures resultados oficiales y existan picks
+                  guardados, aparecerán aquí.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* MOBILE CARDS */}
+                <div className="space-y-3 md:hidden">
+                  {rows.map((row, index) => {
+                    const isCurrentUser = row.user_id === currentUser?.id;
+                    const wonTiebreaker = tiebreakerWinnerKeys.has(
+                      getLeaderboardRowKey(row, index),
+                    );
 
-                          <div className="min-w-0">
-                            <h3 className="truncate text-base font-bold text-white">
-                              {row.full_name || 'Participante'}
-                            </h3>
+                    return (
+                      <article
+                        key={row.entry_id ?? `${row.user_id}-${index}`}
+                        role={row.entry_id ? "button" : undefined}
+                        tabIndex={row.entry_id ? 0 : undefined}
+                        onClick={() => handleOpenLeaderboardEntry(row.entry_id)}
+                        onKeyDown={(event) => {
+                          if (!row.entry_id) return;
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleOpenLeaderboardEntry(row.entry_id);
+                          }
+                        }}
+                        className={`rounded-3xl border p-4 shadow-xl transition duration-200 active:scale-[0.99] ${
+                          row.entry_id
+                            ? "cursor-pointer hover:border-yellow-400/30 hover:bg-yellow-400/10"
+                            : ""
+                        } ${
+                          isCurrentUser
+                            ? "border-emerald-400/30 bg-emerald-400/10"
+                            : "border-white/10 bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div
+                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg font-black ${
+                                index <= 2
+                                  ? "border-yellow-400/30 bg-yellow-400/10 text-2xl"
+                                  : "border-white/10 bg-black/30 text-yellow-400"
+                              }`}
+                            >
+                              {getRankIcon(index)}
+                            </div>
 
-                            <p className="mt-1 truncate text-sm text-yellow-300">
-                              {row.entry_name || 'Quiniela'}
-                            </p>
+                            <div className="min-w-0">
+                              <h3 className="truncate text-base font-bold text-white">
+                                {row.full_name || "Participante"}
+                              </h3>
 
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {isCurrentUser && (
-                                <span className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                                  Tú
-                                </span>
-                              )}
+                              <p className="mt-1 truncate text-sm text-yellow-300">
+                                {row.entry_name || "Quiniela"}
+                              </p>
 
-                              {wonTiebreaker && (
-                                <span className="inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-200">
-                                  Ganó por desempate
-                                </span>
-                              )}
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {isCurrentUser && (
+                                  <span className="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                    Tú
+                                  </span>
+                                )}
+
+                                {wonTiebreaker && (
+                                  <span className="inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-200">
+                                    Ganó por desempate
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+
+                          <div className="text-right">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                              Puntos
+                            </p>
+                            <p className="mt-1 text-3xl font-black text-yellow-400">
+                              {row.total_points}
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="text-right">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
-                            Puntos
-                          </p>
-                          <p className="mt-1 text-3xl font-black text-yellow-400">
-                            {row.total_points}
-                          </p>
-                        </div>
-                      </div>
+                        <div className="mt-4 grid grid-cols-3 gap-3">
+                          <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                              Exactos
+                            </p>
+                            <p className="mt-1 text-xl font-bold text-white">
+                              {row.exact_hits}
+                            </p>
+                          </div>
 
-                      <div className="mt-4 grid grid-cols-3 gap-3">
-                        <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
-                            Exactos
-                          </p>
-                          <p className="mt-1 text-xl font-bold text-white">
-                            {row.exact_hits}
-                          </p>
-                        </div>
+                          <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                              Aciertos
+                            </p>
+                            <p className="mt-1 text-xl font-bold text-white">
+                              {row.outcome_hits}
+                            </p>
+                          </div>
 
-                        <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
-                            Aciertos
-                          </p>
-                          <p className="mt-1 text-xl font-bold text-white">
-                            {row.outcome_hits}
-                          </p>
+                          <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">
+                              Dif. goles
+                            </p>
+                            <p className="mt-1 text-xl font-bold text-yellow-300">
+                              {row.goal_diff ?? "—"}
+                            </p>
+                          </div>
                         </div>
-
-                        <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-3">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-yellow-200/70">
-                            Dif. goles
-                          </p>
-                          <p className="mt-1 text-xl font-bold text-yellow-300">
-                            {row.goal_diff ?? '—'}
-                          </p>
-                        </div>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-
-              {/* DESKTOP TABLE */}
-              <div className="hidden overflow-hidden rounded-3xl border border-white/10 bg-white/5 md:block">
-                <div className="grid grid-cols-[90px_1.2fr_1.2fr_120px_120px_120px_120px] border-b border-yellow-500/20 bg-yellow-500/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
-                  <div>Posición</div>
-                  <div>Jugador</div>
-                  <div>Quiniela</div>
-                  <div className="text-center">Puntos</div>
-                  <div className="text-center">Exactos</div>
-                  <div className="text-center">Aciertos</div>
-                  <div className="text-center">Dif. goles</div>
+                      </article>
+                    );
+                  })}
                 </div>
 
-                {rows.map((row, index) => {
-                  const isCurrentUser = row.user_id === currentUser?.id
-                  const wonTiebreaker = tiebreakerWinnerKeys.has(
-                    getLeaderboardRowKey(row, index)
-                  )
+                {/* DESKTOP TABLE */}
+                <div className="hidden overflow-hidden rounded-3xl border border-white/10 bg-white/5 md:block">
+                  <div className="grid grid-cols-[90px_1.2fr_1.2fr_120px_120px_120px_120px] border-b border-yellow-500/20 bg-yellow-500/5 px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-400">
+                    <div>Posición</div>
+                    <div>Jugador</div>
+                    <div>Quiniela</div>
+                    <div className="text-center">Puntos</div>
+                    <div className="text-center">Exactos</div>
+                    <div className="text-center">Aciertos</div>
+                    <div className="text-center">Dif. goles</div>
+                  </div>
 
-                  return (
-                    <div
-                      key={row.entry_id ?? `${row.user_id}-${index}`}
-                      className={`grid grid-cols-[90px_1.2fr_1.2fr_120px_120px_120px_120px] items-center border-b border-white/10 px-6 py-4 text-sm transition duration-200 last:border-b-0 hover:bg-white/[0.06] ${
-                        isCurrentUser ? 'bg-emerald-400/10' : 'bg-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center text-xl font-bold text-yellow-400">
-                        {getRankIcon(index)}
-                      </div>
+                  {rows.map((row, index) => {
+                    const isCurrentUser = row.user_id === currentUser?.id;
+                    const wonTiebreaker = tiebreakerWinnerKeys.has(
+                      getLeaderboardRowKey(row, index),
+                    );
 
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-white">
-                          {row.full_name || 'Participante'}
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          <span className="text-xs text-white/45">
-                            {isCurrentUser ? 'Tu usuario actual' : 'Jugador'}
-                          </span>
+                    return (
+                      <div
+                        key={row.entry_id ?? `${row.user_id}-${index}`}
+                        role={row.entry_id ? "button" : undefined}
+                        tabIndex={row.entry_id ? 0 : undefined}
+                        onClick={() => handleOpenLeaderboardEntry(row.entry_id)}
+                        onKeyDown={(event) => {
+                          if (!row.entry_id) return;
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleOpenLeaderboardEntry(row.entry_id);
+                          }
+                        }}
+                        className={`grid grid-cols-[90px_1.2fr_1.2fr_120px_120px_120px_120px] items-center border-b border-white/10 px-6 py-4 text-sm transition duration-200 last:border-b-0 hover:bg-white/[0.06] ${
+                          row.entry_id
+                            ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
+                            : ""
+                        } ${
+                          isCurrentUser ? "bg-emerald-400/10" : "bg-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center justify-center text-xl font-bold text-yellow-400">
+                          {getRankIcon(index)}
+                        </div>
 
-                          {wonTiebreaker && (
-                            <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-yellow-200">
-                              Ganó por desempate
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">
+                            {row.full_name || "Participante"}
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            <span className="text-xs text-white/45">
+                              {isCurrentUser ? "Tu usuario actual" : "Jugador"}
                             </span>
-                          )}
+
+                            {wonTiebreaker && (
+                              <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-yellow-200">
+                                Ganó por desempate
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="truncate font-semibold text-white">
+                          {row.entry_name || "Quiniela"}
+                        </div>
+
+                        <div className="text-center text-lg font-black text-yellow-400">
+                          {row.total_points}
+                        </div>
+
+                        <div className="text-center font-semibold text-white/80">
+                          {row.exact_hits}
+                        </div>
+
+                        <div className="text-center font-semibold text-white/80">
+                          {row.outcome_hits}
+                        </div>
+
+                        <div className="text-center font-bold text-yellow-300">
+                          {row.goal_diff ?? "—"}
                         </div>
                       </div>
-
-                      <div className="truncate font-semibold text-white">
-                        {row.entry_name || 'Quiniela'}
-                      </div>
-
-                      <div className="text-center text-lg font-black text-yellow-400">
-                        {row.total_points}
-                      </div>
-
-                      <div className="text-center font-semibold text-white/80">
-                        {row.exact_hits}
-                      </div>
-
-                      <div className="text-center font-semibold text-white/80">
-                        {row.outcome_hits}
-                      </div>
-
-                      <div className="text-center font-bold text-yellow-300">
-                        {row.goal_diff ?? '—'}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </section>
-)}
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </section>
+        )}
       </div>
-    
-<WhatsAppSupportButton user={currentUser} />
 
-</main>
-  )
+      <WhatsAppSupportButton user={currentUser} />
+    </main>
+  );
 }
 
 function PicksScreen({
@@ -1147,331 +1241,348 @@ function PicksScreen({
   onBack,
   user,
 }: {
-  activeEntryId: string | null
-  predictions: Record<string, Prediction>
-  setPredictions: React.Dispatch<React.SetStateAction<Record<string, Prediction>>>
-  onBack: () => void
-  user: UserState
+  activeEntryId: string | null;
+  predictions: Record<string, Prediction>;
+  setPredictions: React.Dispatch<
+    React.SetStateAction<Record<string, Prediction>>
+  >;
+  onBack: () => void;
+  user: UserState;
 }) {
-  const [saving, setSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState('')
-  const [saveError, setSaveError] = useState('')
-  const [autoSaving, setAutoSaving] = useState(false)
-const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-const didUserEditRef = useRef(false)
-  const [officialResults, setOfficialResults] = useState<Record<string, OfficialResult>>({})
-  const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [autoSaving, setAutoSaving] = useState(false);
+  const autoSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didUserEditRef = useRef(false);
+  const [officialResults, setOfficialResults] = useState<
+    Record<string, OfficialResult>
+  >({});
+  const [matchStates, setMatchStates] = useState<Record<string, MatchState>>(
+    {},
+  );
 
-  useScrollToPageTop([])
-
+  useScrollToPageTop([]);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const loadPredictions = async () => {
       if (!activeEntryId) {
-        setPredictions({})
-        return
+        setPredictions({});
+        return;
       }
 
       const { data, error } = await supabase
-        .from('predictions')
-        .select('*')
-        .eq('entry_id', activeEntryId)
+        .from("predictions")
+        .select("*")
+        .eq("entry_id", activeEntryId);
 
-      if (!mounted) return
+      if (!mounted) return;
       if (error) {
-        console.error('Error cargando picks:', error.message)
-        return
+        console.error("Error cargando picks:", error.message);
+        return;
       }
 
-      const formatted: Record<string, Prediction> = {}
+      const formatted: Record<string, Prediction> = {};
       data?.forEach((row) => {
         formatted[row.match_id] = {
           homeScore:
-            row.home_score_predicted == null ? '' : String(row.home_score_predicted),
+            row.home_score_predicted == null
+              ? ""
+              : String(row.home_score_predicted),
           awayScore:
-            row.away_score_predicted == null ? '' : String(row.away_score_predicted),
+            row.away_score_predicted == null
+              ? ""
+              : String(row.away_score_predicted),
           isAutoZero: Boolean(row.is_auto_zero),
-        }
-      })
+        };
+      });
 
-      setPredictions(formatted)
-    }
+      setPredictions(formatted);
+    };
 
     const loadMatchesMeta = async () => {
-      const ids = MATCHES.map((m) => m.id)
+      const ids = MATCHES.map((m) => m.id);
 
       const { data, error } = await supabase
-        .from('matches')
-        .select('id, home_score, away_score, is_open, is_finished')
-        .in('id', ids)
+        .from("matches")
+        .select("id, home_score, away_score, is_open, is_finished")
+        .in("id", ids);
 
-      if (!mounted) return
+      if (!mounted) return;
       if (error) {
-        console.error('Error cargando metadata de matches:', error.message)
-        return
+        console.error("Error cargando metadata de matches:", error.message);
+        return;
       }
 
-      const officialMap: Record<string, OfficialResult> = {}
-      const stateMap: Record<string, MatchState> = {}
+      const officialMap: Record<string, OfficialResult> = {};
+      const stateMap: Record<string, MatchState> = {};
 
       data?.forEach((row) => {
         officialMap[row.id] = {
-          homeScore: row.home_score == null ? '' : String(row.home_score),
-          awayScore: row.away_score == null ? '' : String(row.away_score),
-        }
+          homeScore: row.home_score == null ? "" : String(row.home_score),
+          awayScore: row.away_score == null ? "" : String(row.away_score),
+        };
 
         stateMap[row.id] = {
           isOpen: row.is_open ?? true,
           isFinished: row.is_finished ?? false,
-        }
-      })
+        };
+      });
 
-      setOfficialResults(officialMap)
-      setMatchStates(stateMap)
-    }
+      setOfficialResults(officialMap);
+      setMatchStates(stateMap);
+    };
 
-    loadPredictions()
-    loadMatchesMeta()
+    loadPredictions();
+    loadMatchesMeta();
 
     const channel = supabase
-      .channel('picks-live')
+      .channel("picks-live")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'matches' },
-        loadMatchesMeta
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        loadMatchesMeta,
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'predictions' },
-        loadPredictions
+        "postgres_changes",
+        { event: "*", schema: "public", table: "predictions" },
+        loadPredictions,
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      mounted = false
-      supabase.removeChannel(channel)
-    }
-  }, [activeEntryId, setPredictions])
-
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [activeEntryId, setPredictions]);
 
   const groupedMatches = useMemo(() => {
-  const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
-    if (!acc[match.group]) acc[match.group] = []
-    acc[match.group].push(match)
-    return acc
-  }, {})
+    const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
+      if (!acc[match.group]) acc[match.group] = [];
+      acc[match.group].push(match);
+      return acc;
+    }, {});
 
-  Object.values(grouped).forEach((matches) => {
-    matches.sort((a, b) => {
-      const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0
-      const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0
+    Object.values(grouped).forEach((matches) => {
+      matches.sort((a, b) => {
+        const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0;
+        const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0;
 
-      return dateA - dateB
-    })
-  })
+        return dateA - dateB;
+      });
+    });
 
-  return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
-}, [])
+    return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)));
+  }, []);
 
   const totalCompleted = Object.values(predictions).filter(
-    (item) => item.homeScore !== '' && item.awayScore !== ''
-  ).length
-const totalMatches = MATCHES.length
-const totalPending = totalMatches - totalCompleted
-const isComplete = totalPending === 0
-const globalDeadline = new Date('2026-06-11T10:00:00-06:00')
-const isGlobalLock = new Date() >= globalDeadline
+    (item) => item.homeScore !== "" && item.awayScore !== "",
+  ).length;
+  const totalMatches = MATCHES.length;
+  const totalPending = totalMatches - totalCompleted;
+  const isComplete = totalPending === 0;
+  const globalDeadline = new Date("2026-06-11T10:00:00-06:00");
+  const isGlobalLock = new Date() >= globalDeadline;
 
-const currentPointsSummary = useMemo(() => {
-  let totalPoints = 0
-  let exactHits = 0
-  let outcomeHits = 0
+  const currentPointsSummary = useMemo(() => {
+    let totalPoints = 0;
+    let exactHits = 0;
+    let outcomeHits = 0;
 
-  MATCHES.forEach((match) => {
-    const prediction = predictions[match.id] ?? {
-      homeScore: '',
-      awayScore: '',
-    }
-    const official = officialResults[match.id] ?? {
-      homeScore: '',
-      awayScore: '',
-    }
+    MATCHES.forEach((match) => {
+      const prediction = predictions[match.id] ?? {
+        homeScore: "",
+        awayScore: "",
+      };
+      const official = officialResults[match.id] ?? {
+        homeScore: "",
+        awayScore: "",
+      };
 
-    const status = getPickStatus(prediction, official)
+      const status = getPickStatus(prediction, official);
 
-    if (!status) return
+      if (!status) return;
 
-    if (status.label.includes('Exacto')) {
-      totalPoints += 3
-      exactHits += 1
-      return
-    }
+      if (status.label.includes("Exacto")) {
+        totalPoints += 3;
+        exactHits += 1;
+        return;
+      }
 
-    if (status.label.includes('Acierto')) {
-      totalPoints += 1
-      outcomeHits += 1
-    }
-  })
+      if (status.label.includes("Acierto")) {
+        totalPoints += 1;
+        outcomeHits += 1;
+      }
+    });
 
-  return {
-    totalPoints,
-    exactHits,
-    outcomeHits,
-  }
-}, [officialResults, predictions])
+    return {
+      totalPoints,
+      exactHits,
+      outcomeHits,
+    };
+  }, [officialResults, predictions]);
 
   const handleChange = (
     matchId: string,
-    side: 'homeScore' | 'awayScore',
-    value: string
+    side: "homeScore" | "awayScore",
+    value: string,
   ) => {
-    if (value !== '' && !/^\d+$/.test(value)) return
+    if (value !== "" && !/^\d+$/.test(value)) return;
 
-    didUserEditRef.current = true
+    didUserEditRef.current = true;
 
     setPredictions((prev) => ({
       ...prev,
       [matchId]: {
-        homeScore: side === 'homeScore' ? value : prev[matchId]?.homeScore ?? '',
-        awayScore: side === 'awayScore' ? value : prev[matchId]?.awayScore ?? '',
+        homeScore:
+          side === "homeScore" ? value : (prev[matchId]?.homeScore ?? ""),
+        awayScore:
+          side === "awayScore" ? value : (prev[matchId]?.awayScore ?? ""),
         isAutoZero: false,
       },
-    }))
-  }
+    }));
+  };
 
   const persistPredictions = async () => {
     if (!activeEntryId) {
-      return { errorMessage: 'No hay una quiniela activa.', changed: false }
+      return { errorMessage: "No hay una quiniela activa.", changed: false };
     }
 
-    const entries = Object.entries(predictions)
+    const entries = Object.entries(predictions);
 
     const rowsToDelete = entries
-      .filter(([, p]) => p.homeScore === '' && p.awayScore === '')
-      .map(([matchId]) => matchId)
+      .filter(([, p]) => p.homeScore === "" && p.awayScore === "")
+      .map(([matchId]) => matchId);
 
     const rowsToUpsert = entries
-  .filter(([, p]) => {
-    // SOLO guardar si ambos tienen valor
-    return (
-      p.homeScore !== '' &&
-      p.awayScore !== '' &&
-      !Number.isNaN(Number(p.homeScore)) &&
-      !Number.isNaN(Number(p.awayScore))
-    )
-  })
-  .map(([matchId, p]) => ({
-    entry_id: activeEntryId,
-    match_id: matchId,
-    home_score_predicted: Number(p.homeScore),
-    away_score_predicted: Number(p.awayScore),
-    is_auto_zero: false,
-  }))
+      .filter(([, p]) => {
+        // SOLO guardar si ambos tienen valor
+        return (
+          p.homeScore !== "" &&
+          p.awayScore !== "" &&
+          !Number.isNaN(Number(p.homeScore)) &&
+          !Number.isNaN(Number(p.awayScore))
+        );
+      })
+      .map(([matchId, p]) => ({
+        entry_id: activeEntryId,
+        match_id: matchId,
+        home_score_predicted: Number(p.homeScore),
+        away_score_predicted: Number(p.awayScore),
+        is_auto_zero: false,
+      }));
 
     if (rowsToDelete.length > 0) {
       const { error: deleteError } = await supabase
-        .from('predictions')
+        .from("predictions")
         .delete()
-        .eq('entry_id', activeEntryId)
-        .in('match_id', rowsToDelete)
+        .eq("entry_id", activeEntryId)
+        .in("match_id", rowsToDelete);
 
       if (deleteError) {
-        return { errorMessage: deleteError.message, changed: false }
+        return { errorMessage: deleteError.message, changed: false };
       }
     }
 
     if (rowsToUpsert.length > 0) {
       const { error: upsertError } = await supabase
-        .from('predictions')
-        .upsert(rowsToUpsert, { onConflict: 'entry_id,match_id' })
+        .from("predictions")
+        .upsert(rowsToUpsert, { onConflict: "entry_id,match_id" });
 
       if (upsertError) {
-        return { errorMessage: upsertError.message, changed: false }
+        return { errorMessage: upsertError.message, changed: false };
       }
     }
 
-    return { errorMessage: '', changed: rowsToDelete.length > 0 || rowsToUpsert.length > 0 }
-  }
+    return {
+      errorMessage: "",
+      changed: rowsToDelete.length > 0 || rowsToUpsert.length > 0,
+    };
+  };
 
   const handleSave = async () => {
-  setSaveMessage('')
-  setSaveError('')
+    setSaveMessage("");
+    setSaveError("");
 
-  if (!activeEntryId) {
-    setSaveError('No hay una quiniela activa.')
-    return
-  }
-
-  setSaving(true)
-
-  try {
-    const result = await persistPredictions()
-
-    if (result.errorMessage) {
-      setSaveError(`Error al guardar: ${result.errorMessage}`)
-      return
+    if (!activeEntryId) {
+      setSaveError("No hay una quiniela activa.");
+      return;
     }
 
-    didUserEditRef.current = false
-    setSaveMessage(result.changed ? 'Pronósticos guardados correctamente ✅' : 'No hay cambios para guardar.')
+    setSaving(true);
 
-    setTimeout(() => {
-      setSaveMessage('')
-    }, 3000)
-  } catch (err) {
-    console.error(err)
-    setSaveError('Error inesperado al guardar.')
-  } finally {
-    setSaving(false)
-  }
-}
-const handleAutoSave = async () => {
-  if (!activeEntryId || isGlobalLock) return
+    try {
+      const result = await persistPredictions();
 
-  try {
-    setAutoSaving(true)
-    setSaveError('')
+      if (result.errorMessage) {
+        setSaveError(`Error al guardar: ${result.errorMessage}`);
+        return;
+      }
 
-    const result = await persistPredictions()
+      didUserEditRef.current = false;
+      setSaveMessage(
+        result.changed
+          ? "Pronósticos guardados correctamente ✅"
+          : "No hay cambios para guardar.",
+      );
 
-    if (result.errorMessage) {
-      setSaveError(`Error en guardado automático: ${result.errorMessage}`)
-      return
+      setTimeout(() => {
+        setSaveMessage("");
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveError("Error inesperado al guardar.");
+    } finally {
+      setSaving(false);
     }
+  };
+  const handleAutoSave = async () => {
+    if (!activeEntryId || isGlobalLock) return;
 
-    didUserEditRef.current = false
-    setSaveMessage('✓ Guardado')
+    try {
+      setAutoSaving(true);
+      setSaveError("");
 
-    setTimeout(() => {
-      setSaveMessage('')
-    }, 1500)
-  } catch (err) {
-    console.error('Auto-save error:', err)
-    setSaveError('Error inesperado en guardado automático.')
-  } finally {
-    setAutoSaving(false)
-  }
-}
+      const result = await persistPredictions();
 
-useEffect(() => {
-  if (!activeEntryId || isGlobalLock || !didUserEditRef.current) return
+      if (result.errorMessage) {
+        setSaveError(`Error en guardado automático: ${result.errorMessage}`);
+        return;
+      }
 
-  if (autoSaveTimeout.current) {
-    clearTimeout(autoSaveTimeout.current)
-  }
+      didUserEditRef.current = false;
+      setSaveMessage("✓ Guardado");
 
-  autoSaveTimeout.current = setTimeout(() => {
-    handleAutoSave()
-  }, 1200)
+      setTimeout(() => {
+        setSaveMessage("");
+      }, 1500);
+    } catch (err) {
+      console.error("Auto-save error:", err);
+      setSaveError("Error inesperado en guardado automático.");
+    } finally {
+      setAutoSaving(false);
+    }
+  };
 
-  return () => {
+  useEffect(() => {
+    if (!activeEntryId || isGlobalLock || !didUserEditRef.current) return;
+
     if (autoSaveTimeout.current) {
-      clearTimeout(autoSaveTimeout.current)
+      clearTimeout(autoSaveTimeout.current);
     }
-  }
-}, [predictions, activeEntryId, isGlobalLock])
+
+    autoSaveTimeout.current = setTimeout(() => {
+      handleAutoSave();
+    }, 1200);
+
+    return () => {
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+    };
+  }, [predictions, activeEntryId, isGlobalLock]);
 
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
@@ -1491,34 +1602,32 @@ useEffect(() => {
           </div>
 
           <div className="grid w-full max-w-[320px] gap-3">
-  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-      Progreso de captura
-    </p>
-    <p className="mt-2 text-2xl font-bold text-white">
-      {totalCompleted} de {totalMatches}
-    </p>
-    <p className="mt-1 text-sm text-white/55">
-      partidos guardados
-    </p>
-  </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                Progreso de captura
+              </p>
+              <p className="mt-2 text-2xl font-bold text-white">
+                {totalCompleted} de {totalMatches}
+              </p>
+              <p className="mt-1 text-sm text-white/55">partidos guardados</p>
+            </div>
 
-  <div
-    className={`rounded-2xl border p-4 text-sm font-semibold ${
-      isComplete
-        ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-        : 'border-red-400/20 bg-red-400/10 text-red-200'
-    }`}
-  >
-    {isComplete
-      ? '✅ Ya capturaste todos tus pronósticos.'
-      : `⚠️ Te faltan ${totalPending} partidos por capturar.`}
-  </div>
+            <div
+              className={`rounded-2xl border p-4 text-sm font-semibold ${
+                isComplete
+                  ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                  : "border-red-400/20 bg-red-400/10 text-red-200"
+              }`}
+            >
+              {isComplete
+                ? "✅ Ya capturaste todos tus pronósticos."
+                : `⚠️ Te faltan ${totalPending} partidos por capturar.`}
+            </div>
 
-  <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-200">
-    ✅ Quiniela pagada
-  </div>
-</div>
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-200">
+              ✅ Quiniela pagada
+            </div>
+          </div>
         </div>
 
         <section className="mt-8 rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black p-6 text-center shadow-[0_0_35px_rgba(250,204,21,0.14)]">
@@ -1560,8 +1669,8 @@ useEffect(() => {
             <section key={groupName}>
               <div className="mb-4 flex items-center justify-between gap-4">
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-  {groupName}
-</h2>
+                  {groupName}
+                </h2>
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/60">
                   {matches.length} partidos
                 </span>
@@ -1570,27 +1679,26 @@ useEffect(() => {
               <div className="space-y-4">
                 {matches.map((match) => {
                   const current = predictions[match.id] ?? {
-                    homeScore: '',
-                    awayScore: '',
-                  }
+                    homeScore: "",
+                    awayScore: "",
+                  };
 
                   const official = officialResults[match.id] ?? {
-                    homeScore: '',
-                    awayScore: '',
-                  }
+                    homeScore: "",
+                    awayScore: "",
+                  };
 
                   const hasOfficialResult =
-                    official.homeScore !== '' && official.awayScore !== ''
+                    official.homeScore !== "" && official.awayScore !== "";
 
-                  const locked = isGlobalLock
-                  const status = getPickStatus(current, official)
+                  const locked = isGlobalLock;
+                  const status = getPickStatus(current, official);
 
                   return (
                     <div
                       key={match.id}
                       className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-lg transition hover:bg-white/[0.06] hover:border-yellow-400/20"
-  >
-                
+                    >
                       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center">
                         <div className="min-w-0 flex flex-col justify-center">
                           <p className="text-xs uppercase tracking-[0.18em] text-white/45">
@@ -1599,61 +1707,65 @@ useEffect(() => {
 
                           <div className="mt-4 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
                             <div className="flex items-center justify-center gap-4">
-  <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
-    <Image
-      src={match.homeFlagUrl}
-      alt={match.homeTeam}
-      width={56}
-      height={40}
-      className="h-8 w-10 object-cover sm:h-10 sm:w-14"
-    />
-  </div>
-  <div className="text-left">
-    <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-      {match.homeCode}
-    </div>
-    <span className="text-lg sm:text-2xl font-bold tracking-tight">{match.homeTeam}</span>
-  </div>
-</div>
+                              <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
+                                <Image
+                                  src={match.homeFlagUrl}
+                                  alt={match.homeTeam}
+                                  width={56}
+                                  height={40}
+                                  className="h-8 w-10 object-cover sm:h-10 sm:w-14"
+                                />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+                                  {match.homeCode}
+                                </div>
+                                <span className="text-lg sm:text-2xl font-bold tracking-tight">
+                                  {match.homeTeam}
+                                </span>
+                              </div>
+                            </div>
 
                             <div className="flex items-center justify-center">
-  <div className="text-sm uppercase tracking-[0.3em] text-white/35">
-    VS
-  </div>
-</div>
+                              <div className="text-sm uppercase tracking-[0.3em] text-white/35">
+                                VS
+                              </div>
+                            </div>
 
                             <div className="flex items-center justify-center gap-4">
-  <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
-    <Image
-      src={match.awayFlagUrl}
-      alt={match.awayTeam}
-      width={56}
-      height={40}
-      className="h-10 w-14 object-cover"
-    />
-  </div>
+                              <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
+                                <Image
+                                  src={match.awayFlagUrl}
+                                  alt={match.awayTeam}
+                                  width={56}
+                                  height={40}
+                                  className="h-10 w-14 object-cover"
+                                />
+                              </div>
 
-  <div className="text-left">
-    <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-      {match.awayCode}
-    </div>
-    <span className="text-lg sm:text-2xl font-bold tracking-tight">
-      {match.awayTeam}
-    </span>
-  </div>
-</div>
+                              <div className="text-left">
+                                <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+                                  {match.awayCode}
+                                </div>
+                                <span className="text-lg sm:text-2xl font-bold tracking-tight">
+                                  {match.awayTeam}
+                                </span>
+                              </div>
+                            </div>
                           </div>
 
                           <div className="mt-4 flex flex-wrap items-center gap-3">
-                           {locked && (
-  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-400">
-    🔒 Captura cerrada
-  </p>
-)}
+                            {locked && (
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-400">
+                                🔒 Captura cerrada
+                              </p>
+                            )}
 
                             {hasOfficialResult && (
                               <div className="inline-flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100">
-                                <span className="font-semibold">Resultado oficial:</span>
+                                <span className="font-semibold">
+                                  Resultado oficial:
+                                </span>
                                 <span>
                                   {official.homeScore} - {official.awayScore}
                                 </span>
@@ -1664,7 +1776,9 @@ useEffect(() => {
                               <div
                                 className={`inline-flex items-center gap-3 rounded-2xl border px-4 py-2 text-sm ${status.className}`}
                               >
-                                <span className="font-semibold">{status.label}</span>
+                                <span className="font-semibold">
+                                  {status.label}
+                                </span>
                                 <span>{status.detail}</span>
                               </div>
                             )}
@@ -1684,16 +1798,22 @@ useEffect(() => {
                               placeholder=""
                               disabled={locked}
                               onChange={(e) =>
-                                handleChange(match.id, 'homeScore', e.target.value)
+                                handleChange(
+                                  match.id,
+                                  "homeScore",
+                                  e.target.value,
+                                )
                               }
                               className={`h-12 w-14 rounded-2xl border bg-white/10 text-center text-xl font-bold outline-none transition focus:border-yellow-400/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:opacity-100 sm:h-14 sm:w-16 ${
                                 current.isAutoZero
-                                  ? 'border-red-400/40 text-red-300 shadow-[0_0_18px_rgba(248,113,113,0.16)]'
-                                  : 'border-white/10 text-white'
+                                  ? "border-red-400/40 text-red-300 shadow-[0_0_18px_rgba(248,113,113,0.16)]"
+                                  : "border-white/10 text-white"
                               }`}
                             />
 
-                            <span className="text-lg font-semibold text-white/50">-</span>
+                            <span className="text-lg font-semibold text-white/50">
+                              -
+                            </span>
 
                             <input
                               type="text"
@@ -1702,12 +1822,16 @@ useEffect(() => {
                               placeholder=""
                               disabled={locked}
                               onChange={(e) =>
-                                handleChange(match.id, 'awayScore', e.target.value)
+                                handleChange(
+                                  match.id,
+                                  "awayScore",
+                                  e.target.value,
+                                )
                               }
                               className={`h-12 w-14 rounded-2xl border bg-white/10 text-center text-xl font-bold outline-none transition focus:border-yellow-400/40 focus:bg-white/15 disabled:cursor-not-allowed disabled:opacity-100 sm:h-14 sm:w-16 ${
                                 current.isAutoZero
-                                  ? 'border-red-400/40 text-red-300 shadow-[0_0_18px_rgba(248,113,113,0.16)]'
-                                  : 'border-white/10 text-white'
+                                  ? "border-red-400/40 text-red-300 shadow-[0_0_18px_rgba(248,113,113,0.16)]"
+                                  : "border-white/10 text-white"
                               }`}
                             />
                           </div>
@@ -1720,350 +1844,373 @@ useEffect(() => {
                         </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
 
                 <div className="mt-6 flex justify-end">
-  <div className="w-full max-w-[250px]">
-    {saveMessage && (
-  <div className="mb-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-center text-sm font-semibold text-emerald-200">
-    {saveMessage}
-  </div>
-)}
+                  <div className="w-full max-w-[250px]">
+                    {saveMessage && (
+                      <div className="mb-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-center text-sm font-semibold text-emerald-200">
+                        {saveMessage}
+                      </div>
+                    )}
 
-{saveError && (
-  <div className="mb-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-center text-sm font-semibold text-red-200">
-    {saveError}
-  </div>
-)}
+                    {saveError && (
+                      <div className="mb-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-center text-sm font-semibold text-red-200">
+                        {saveError}
+                      </div>
+                    )}
 
-{autoSaving && (
-  <div className="mb-3 flex items-center justify-center gap-2 text-xs text-white/50 animate-pulse">
-    <div className="h-2 w-2 rounded-full bg-yellow-400" />
-    Guardando...
-  </div>
-)}
-<p className="text-center text-xs text-white/40">
-  Consulta tus pronósticos registrados
-</p>
-  </div>
-</div>
+                    {autoSaving && (
+                      <div className="mb-3 flex items-center justify-center gap-2 text-xs text-white/50 animate-pulse">
+                        <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                        Guardando...
+                      </div>
+                    )}
+                    <p className="text-center text-xs text-white/40">
+                      Consulta tus pronósticos registrados
+                    </p>
+                  </div>
+                </div>
               </div>
 
-<div className="mt-6 flex justify-end">
-  <button
-    type="button"
-    onClick={onBack}
-    className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
-  >
-    ← Volver al menú principal
-  </button>
-</div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+                >
+                  ← Volver al menú principal
+                </button>
+              </div>
             </section>
           ))}
         </div>
       </div>
-    
-<WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
 
-</main>
-  )
+      <WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
+    </main>
+  );
 }
 
 function AdminScreen({ onBack }: { onBack: () => void }) {
-  const [results, setResults] = useState<Record<string, OfficialResult>>({})
-  const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
-  const [savingId, setSavingId] = useState<string | null>(null)
-  const [users, setUsers] = useState<AdminUserRow[]>([])
-  const [usersLoading, setUsersLoading] = useState(true)
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
-  const [paymentEntries, setPaymentEntries] = useState<AdminPaymentEntryRow[]>([])
-  const [paymentsLoading, setPaymentsLoading] = useState(true)
-  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending' | 'exempt'>('all')
-const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null)
-const [financeLoading, setFinanceLoading] = useState(true)
+  const [results, setResults] = useState<Record<string, OfficialResult>>({});
+  const [matchStates, setMatchStates] = useState<Record<string, MatchState>>(
+    {},
+  );
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [paymentEntries, setPaymentEntries] = useState<AdminPaymentEntryRow[]>(
+    [],
+  );
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(
+    null,
+  );
+  const [paymentFilter, setPaymentFilter] = useState<
+    "all" | "paid" | "pending" | "exempt"
+  >("all");
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(
+    null,
+  );
+  const [financeLoading, setFinanceLoading] = useState(true);
 
-  useScrollToPageTop([])
+  useScrollToPageTop([]);
 
-useEffect(() => {
-    let mounted = true
+  useEffect(() => {
+    let mounted = true;
 
     const loadMatchesMeta = async () => {
-      const ids = MATCHES.map((m) => m.id)
+      const ids = MATCHES.map((m) => m.id);
 
       const { data, error } = await supabase
-        .from('matches')
-        .select('id, home_score, away_score, is_open, is_finished')
-        .in('id', ids)
+        .from("matches")
+        .select("id, home_score, away_score, is_open, is_finished")
+        .in("id", ids);
 
-      if (!mounted) return
+      if (!mounted) return;
       if (error) {
-        console.error('Error cargando resultados:', error.message)
-        return
+        console.error("Error cargando resultados:", error.message);
+        return;
       }
 
-      const resultMap: Record<string, OfficialResult> = {}
-      const stateMap: Record<string, MatchState> = {}
+      const resultMap: Record<string, OfficialResult> = {};
+      const stateMap: Record<string, MatchState> = {};
 
       data?.forEach((row) => {
         resultMap[row.id] = {
-          homeScore:
-            row.home_score == null ? '' : String(row.home_score),
-          awayScore:
-            row.away_score == null ? '' : String(row.away_score),
-        }
+          homeScore: row.home_score == null ? "" : String(row.home_score),
+          awayScore: row.away_score == null ? "" : String(row.away_score),
+        };
 
         stateMap[row.id] = {
           isOpen: row.is_open ?? true,
           isFinished: row.is_finished ?? false,
+        };
+      });
+
+      setResults(resultMap);
+      setMatchStates(stateMap);
+    };
+
+    const loadUsers = async () => {
+      setUsersLoading(true);
+
+      const token = await getSafeAccessToken();
+
+      if (!token) {
+        if (!mounted) return;
+        setUsers([]);
+        setUsersLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/admin/users", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!mounted) return;
+
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          console.error(
+            "Error cargando usuarios admin:",
+            payload?.error || res.statusText,
+          );
+          setUsers([]);
+          setUsersLoading(false);
+          return;
         }
-      })
 
-      setResults(resultMap)
-      setMatchStates(stateMap)
-    }
+        const data = await res.json();
 
-   const loadUsers = async () => {
-  setUsersLoading(true)
-
-  const token = await getSafeAccessToken()
-
-  if (!token) {
-    if (!mounted) return
-    setUsers([])
-    setUsersLoading(false)
-    return
-  }
-
-  try {
-    const res = await fetch('/api/admin/users', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!mounted) return
-
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null)
-      console.error('Error cargando usuarios admin:', payload?.error || res.statusText)
-      setUsers([])
-      setUsersLoading(false)
-      return
-    }
-
-    const data = await res.json()
-
-    if (!mounted) return
-    setUsers(Array.isArray(data) ? data : data?.users ?? [])
-    setUsersLoading(false)
-  } catch (err) {
-    console.error('Error cargando usuarios admin:', err)
-    if (!mounted) return
-    setUsers([])
-    setUsersLoading(false)
-  }
-}
+        if (!mounted) return;
+        setUsers(Array.isArray(data) ? data : (data?.users ?? []));
+        setUsersLoading(false);
+      } catch (err) {
+        console.error("Error cargando usuarios admin:", err);
+        if (!mounted) return;
+        setUsers([]);
+        setUsersLoading(false);
+      }
+    };
 
     const loadPaymentEntries = async () => {
-  setPaymentsLoading(true)
+      setPaymentsLoading(true);
 
-  const token = await getSafeAccessToken()
+      const token = await getSafeAccessToken();
 
-  if (!token) {
-    if (!mounted) return
-    setPaymentEntries([])
-    setPaymentsLoading(false)
-    return
-  }
+      if (!token) {
+        if (!mounted) return;
+        setPaymentEntries([]);
+        setPaymentsLoading(false);
+        return;
+      }
 
-  try {
-    const res = await fetch('/api/admin/payments', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+      try {
+        const res = await fetch("/api/admin/payments", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-    if (!mounted) return
+        if (!mounted) return;
 
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null)
-      console.error('Error cargando pagos admin:', payload?.error || res.statusText)
-      setPaymentEntries([])
-      setPaymentsLoading(false)
-      return
-    }
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          console.error(
+            "Error cargando pagos admin:",
+            payload?.error || res.statusText,
+          );
+          setPaymentEntries([]);
+          setPaymentsLoading(false);
+          return;
+        }
 
-    const data = await res.json()
-    const rows = Array.isArray(data) ? data : data?.entries ?? []
+        const data = await res.json();
+        const rows = Array.isArray(data) ? data : (data?.entries ?? []);
 
-    if (!mounted) return
+        if (!mounted) return;
 
-    setPaymentEntries(((rows ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
-      const nameA = a.profiles?.full_name || a.profiles?.email || 'Participante'
-      const nameB = b.profiles?.full_name || b.profiles?.email || 'Participante'
-      const byName = nameA.localeCompare(nameB, 'es', { sensitivity: 'base' })
-      if (byName !== 0) return byName
-      return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-    }))
+        setPaymentEntries(
+          ((rows ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
+            const nameA =
+              a.profiles?.full_name || a.profiles?.email || "Participante";
+            const nameB =
+              b.profiles?.full_name || b.profiles?.email || "Participante";
+            const byName = nameA.localeCompare(nameB, "es", {
+              sensitivity: "base",
+            });
+            if (byName !== 0) return byName;
+            return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+          }),
+        );
 
-    setPaymentsLoading(false)
-  } catch (err) {
-    console.error('Error cargando pagos admin:', err)
-    if (!mounted) return
-    setPaymentEntries([])
-    setPaymentsLoading(false)
-  }
-}
-
+        setPaymentsLoading(false);
+      } catch (err) {
+        console.error("Error cargando pagos admin:", err);
+        if (!mounted) return;
+        setPaymentEntries([]);
+        setPaymentsLoading(false);
+      }
+    };
 
     const loadFinanceSummary = async () => {
-  setFinanceLoading(true)
+      setFinanceLoading(true);
 
-  const token = await getSafeAccessToken()
+      const token = await getSafeAccessToken();
 
-  if (!token) {
-    if (!mounted) return
-    setFinanceSummary(null)
-    setFinanceLoading(false)
-    return
-  }
+      if (!token) {
+        if (!mounted) return;
+        setFinanceSummary(null);
+        setFinanceLoading(false);
+        return;
+      }
 
-  try {
-    const res = await fetch('/api/admin/payments-summary', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+      try {
+        const res = await fetch("/api/admin/payments-summary", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-    if (!mounted) return
+        if (!mounted) return;
 
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null)
-      const errorDebug = {
-  status: res.status,
-  statusText: res.statusText,
-  payload,
-}
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null);
+          const errorDebug = {
+            status: res.status,
+            statusText: res.statusText,
+            payload,
+          };
 
-console.error(
-  'Error cargando dashboard financiero:',
-  JSON.stringify(errorDebug, null, 2)
-)
+          console.error(
+            "Error cargando dashboard financiero:",
+            JSON.stringify(errorDebug, null, 2),
+          );
 
-alert(`Error dashboard financiero:
+          alert(`Error dashboard financiero:
 status: ${res.status}
 statusText: ${res.statusText}
-payload: ${JSON.stringify(payload)}`)
-      setFinanceSummary(null)
-      setFinanceLoading(false)
-      return
-    }
+payload: ${JSON.stringify(payload)}`);
+          setFinanceSummary(null);
+          setFinanceLoading(false);
+          return;
+        }
 
-    const data = await res.json()
+        const data = await res.json();
 
-    if (!mounted) return
-    setFinanceSummary(data as FinanceSummary)
-    setFinanceLoading(false)
-  } catch (err) {
-    console.error('Error cargando dashboard financiero:', err)
-    if (!mounted) return
-    setFinanceSummary(null)
-    setFinanceLoading(false)
-  }
-}
+        if (!mounted) return;
+        setFinanceSummary(data as FinanceSummary);
+        setFinanceLoading(false);
+      } catch (err) {
+        console.error("Error cargando dashboard financiero:", err);
+        if (!mounted) return;
+        setFinanceSummary(null);
+        setFinanceLoading(false);
+      }
+    };
 
-    loadMatchesMeta()
-    loadUsers()
-    loadPaymentEntries()
-    loadFinanceSummary()
+    loadMatchesMeta();
+    loadUsers();
+    loadPaymentEntries();
+    loadFinanceSummary();
 
     const channel = supabase
-      .channel('admin-matches-live')
+      .channel("admin-matches-live")
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'matches' },
-        loadMatchesMeta
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        loadMatchesMeta,
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
         () => {
-          loadUsers()
-          loadPaymentEntries()
-          loadFinanceSummary()
-        }
+          loadUsers();
+          loadPaymentEntries();
+          loadFinanceSummary();
+        },
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'entries' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entries" },
         () => {
-          loadPaymentEntries()
-          loadFinanceSummary()
-        }
+          loadPaymentEntries();
+          loadFinanceSummary();
+        },
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'payments' },
-        loadFinanceSummary
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payments" },
+        loadFinanceSummary,
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      mounted = false
-      supabase.removeChannel(channel)
-    }
-  }, [])
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const groupedMatches = useMemo(() => {
     const sortedMatches = [...MATCHES].sort((a, b) => {
-      const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0
-      const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0
+      const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0;
+      const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0;
 
-      return dateA - dateB
-    })
+      return dateA - dateB;
+    });
 
-    const grouped = sortedMatches.reduce<Record<string, Match[]>>((acc, match) => {
-      const cleanKickoff = match.kickoff.replace(' (Hora CDMX)', '')
-      const [dateLabel] = cleanKickoff.split(' · ')
-      const heading = dateLabel?.toUpperCase() || 'SIN FECHA'
+    const grouped = sortedMatches.reduce<Record<string, Match[]>>(
+      (acc, match) => {
+        const cleanKickoff = match.kickoff.replace(" (Hora CDMX)", "");
+        const [dateLabel] = cleanKickoff.split(" · ");
+        const heading = dateLabel?.toUpperCase() || "SIN FECHA";
 
-      if (!acc[heading]) acc[heading] = []
-      acc[heading].push(match)
-      return acc
-    }, {})
+        if (!acc[heading]) acc[heading] = [];
+        acc[heading].push(match);
+        return acc;
+      },
+      {},
+    );
 
-    return grouped
-  }, [])
+    return grouped;
+  }, []);
 
   const updateResult = (
     matchId: string,
-    side: 'homeScore' | 'awayScore',
-    value: string
+    side: "homeScore" | "awayScore",
+    value: string,
   ) => {
-    if (value !== '' && !/^\d+$/.test(value)) return
+    if (value !== "" && !/^\d+$/.test(value)) return;
 
     setResults((prev) => ({
       ...prev,
       [matchId]: {
-        homeScore: side === 'homeScore' ? value : prev[matchId]?.homeScore ?? '',
-        awayScore: side === 'awayScore' ? value : prev[matchId]?.awayScore ?? '',
+        homeScore:
+          side === "homeScore" ? value : (prev[matchId]?.homeScore ?? ""),
+        awayScore:
+          side === "awayScore" ? value : (prev[matchId]?.awayScore ?? ""),
       },
-    }))
-  }
+    }));
+  };
 
   const toggleMatchOpen = async (matchId: string, currentOpen: boolean) => {
-    const nextOpen = !currentOpen
+    const nextOpen = !currentOpen;
 
     const { error } = await supabase
-      .from('matches')
+      .from("matches")
       .update({ is_open: nextOpen })
-      .eq('id', matchId)
+      .eq("id", matchId);
 
     if (error) {
-      alert(`Error al cambiar estado del partido: ${error.message}`)
-      return
+      alert(`Error al cambiar estado del partido: ${error.message}`);
+      return;
     }
 
     setMatchStates((prev) => ({
@@ -2072,47 +2219,47 @@ payload: ${JSON.stringify(payload)}`)
         isOpen: nextOpen,
         isFinished: prev[matchId]?.isFinished ?? false,
       },
-    }))
-  }
+    }));
+  };
 
   const saveOfficialResult = async (matchId: string) => {
-    const current = results[matchId] ?? { homeScore: '', awayScore: '' }
+    const current = results[matchId] ?? { homeScore: "", awayScore: "" };
 
-    setSavingId(matchId)
+    setSavingId(matchId);
 
-    const cleanHomeScore = current.homeScore.trim()
-    const cleanAwayScore = current.awayScore.trim()
+    const cleanHomeScore = current.homeScore.trim();
+    const cleanAwayScore = current.awayScore.trim();
 
-    const homeScore = cleanHomeScore === '' ? null : Number(cleanHomeScore)
-    const awayScore = cleanAwayScore === '' ? null : Number(cleanAwayScore)
-    const hasFullResult = homeScore !== null && awayScore !== null
+    const homeScore = cleanHomeScore === "" ? null : Number(cleanHomeScore);
+    const awayScore = cleanAwayScore === "" ? null : Number(cleanAwayScore);
+    const hasFullResult = homeScore !== null && awayScore !== null;
 
     const { data, error } = await supabase
-      .from('matches')
+      .from("matches")
       .update({
         home_score: homeScore,
         away_score: awayScore,
         is_finished: hasFullResult,
         is_open: !hasFullResult,
       })
-      .eq('id', matchId)
-      .select('home_score, away_score, is_open, is_finished')
-      .single()
+      .eq("id", matchId)
+      .select("home_score, away_score, is_open, is_finished")
+      .single();
 
-    setSavingId(null)
+    setSavingId(null);
 
     if (error) {
-      alert(`Error al guardar resultado oficial: ${error.message}`)
-      return
+      alert(`Error al guardar resultado oficial: ${error.message}`);
+      return;
     }
 
     setResults((prev) => ({
       ...prev,
       [matchId]: {
-        homeScore: data?.home_score == null ? '' : String(data.home_score),
-        awayScore: data?.away_score == null ? '' : String(data.away_score),
+        homeScore: data?.home_score == null ? "" : String(data.home_score),
+        awayScore: data?.away_score == null ? "" : String(data.away_score),
       },
-    }))
+    }));
 
     setMatchStates((prev) => ({
       ...prev,
@@ -2120,73 +2267,87 @@ payload: ${JSON.stringify(payload)}`)
         isOpen: data?.is_open ?? !hasFullResult,
         isFinished: data?.is_finished ?? hasFullResult,
       },
-    }))
+    }));
 
-    alert(hasFullResult ? 'Resultado oficial guardado ✅' : 'Resultado borrado y partido reabierto ✅')
-  }
+    alert(
+      hasFullResult
+        ? "Resultado oficial guardado ✅"
+        : "Resultado borrado y partido reabierto ✅",
+    );
+  };
 
- const handleDeleteUser = async (targetUser: AdminUserRow) => {
-  const label = targetUser.full_name || targetUser.email || 'este participante'
+  const handleDeleteUser = async (targetUser: AdminUserRow) => {
+    const label =
+      targetUser.full_name || targetUser.email || "este participante";
 
-  const confirmed = window.confirm(
-    `¿Seguro que quieres borrar a ${label}? Esto eliminará también TODAS sus quinielas y picks.`
-  )
+    const confirmed = window.confirm(
+      `¿Seguro que quieres borrar a ${label}? Esto eliminará también TODAS sus quinielas y picks.`,
+    );
 
-  if (!confirmed) return
+    if (!confirmed) return;
 
-  setDeletingUserId(targetUser.id)
+    setDeletingUserId(targetUser.id);
 
-  try {
-    const token = await getSafeAccessToken()
+    try {
+      const token = await getSafeAccessToken();
 
-    if (!token) {
-      alert('Tu sesión expiró. Inicia sesión nuevamente.')
-      return
+      if (!token) {
+        alert("Tu sesión expiró. Inicia sesión nuevamente.");
+        return;
+      }
+
+      const res = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: targetUser.id,
+        }),
+      });
+
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        alert(payload?.error || "Error al borrar usuario.");
+        return;
+      }
+
+      setUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
+      setPaymentEntries((prev) =>
+        prev.filter((entry) => entry.user_id !== targetUser.id),
+      );
+
+      alert("Participante, quinielas y picks eliminados correctamente ✅");
+    } catch (err) {
+      console.error("Error borrando usuario completo:", err);
+      alert("Error inesperado al borrar usuario.");
+    } finally {
+      setDeletingUserId(null);
     }
-
-    const res = await fetch('/api/admin/delete-user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        userId: targetUser.id,
-      }),
-    })
-
-    const payload = await res.json().catch(() => null)
-
-    if (!res.ok) {
-      alert(payload?.error || 'Error al borrar usuario.')
-      return
-    }
-
-    setUsers((prev) => prev.filter((u) => u.id !== targetUser.id))
-    setPaymentEntries((prev) => prev.filter((entry) => entry.user_id !== targetUser.id))
-
-    alert('Participante, quinielas y picks eliminados correctamente ✅')
-  } catch (err) {
-    console.error('Error borrando usuario completo:', err)
-    alert('Error inesperado al borrar usuario.')
-  } finally {
-    setDeletingUserId(null)
-  }
-}
+  };
 
   const paymentSummary = useMemo(() => {
-    const totalEntries = paymentEntries.length
-    const paidEntries = paymentEntries.filter((entry) => entry.payment_status === 'paid').length
-    const partialEntries = paymentEntries.filter((entry) => entry.payment_status === 'partial').length
-    const exemptEntries = paymentEntries.filter((entry) => entry.payment_status === 'exempt').length
-    const pendingEntries = totalEntries - paidEntries - partialEntries - exemptEntries
+    const totalEntries = paymentEntries.length;
+    const paidEntries = paymentEntries.filter(
+      (entry) => entry.payment_status === "paid",
+    ).length;
+    const partialEntries = paymentEntries.filter(
+      (entry) => entry.payment_status === "partial",
+    ).length;
+    const exemptEntries = paymentEntries.filter(
+      (entry) => entry.payment_status === "exempt",
+    ).length;
+    const pendingEntries =
+      totalEntries - paidEntries - partialEntries - exemptEntries;
     const totalCollected = paymentEntries.reduce(
       (sum, entry) => sum + Number(entry.payment_amount ?? 0),
-      0
-    )
-    const adminFees = paidEntries * ADMIN_FEE_PER_ENTRY
-    const prizeContribution = paidEntries * PRIZE_CONTRIBUTION_PER_ENTRY
-    const prizePool = Math.max(GUARANTEED_PRIZE_POOL, prizeContribution)
+      0,
+    );
+    const adminFees = paidEntries * ADMIN_FEE_PER_ENTRY;
+    const prizeContribution = paidEntries * PRIZE_CONTRIBUTION_PER_ENTRY;
+    const prizePool = Math.max(GUARANTEED_PRIZE_POOL, prizeContribution);
 
     return {
       totalEntries,
@@ -2198,125 +2359,144 @@ payload: ${JSON.stringify(payload)}`)
       adminFees,
       prizeContribution,
       prizePool,
-    }
-  }, [paymentEntries])
+    };
+  }, [paymentEntries]);
 
   const filteredPaymentEntries = useMemo(() => {
-    if (paymentFilter === 'all') return paymentEntries
+    if (paymentFilter === "all") return paymentEntries;
 
-    if (paymentFilter === 'pending') {
+    if (paymentFilter === "pending") {
       return paymentEntries.filter(
-        (entry) => !entry.payment_status || entry.payment_status === 'pending' || entry.payment_status === 'partial'
-      )
+        (entry) =>
+          !entry.payment_status ||
+          entry.payment_status === "pending" ||
+          entry.payment_status === "partial",
+      );
     }
 
-    return paymentEntries.filter((entry) => entry.payment_status === paymentFilter)
-  }, [paymentEntries, paymentFilter])
+    return paymentEntries.filter(
+      (entry) => entry.payment_status === paymentFilter,
+    );
+  }, [paymentEntries, paymentFilter]);
 
   const paymentFilterOptions = [
     {
-      key: 'all' as const,
-      label: 'Todas',
+      key: "all" as const,
+      label: "Todas",
       count: paymentEntries.length,
     },
     {
-      key: 'paid' as const,
-      label: 'Pagadas',
+      key: "paid" as const,
+      label: "Pagadas",
       count: paymentSummary.paidEntries,
     },
     {
-      key: 'pending' as const,
-      label: 'Pendientes',
+      key: "pending" as const,
+      label: "Pendientes",
       count: paymentSummary.pendingEntries + paymentSummary.partialEntries,
     },
     {
-      key: 'exempt' as const,
-      label: 'Exentas',
+      key: "exempt" as const,
+      label: "Exentas",
       count: paymentSummary.exemptEntries,
     },
-  ]
+  ];
 
   const refreshAdminPaymentData = async () => {
-    const token = await getSafeAccessToken()
+    const token = await getSafeAccessToken();
 
     if (!token) {
-      setPaymentEntries([])
-      setFinanceSummary(null)
-      return
+      setPaymentEntries([]);
+      setFinanceSummary(null);
+      return;
     }
 
     const [paymentsRes, financeRes] = await Promise.all([
-      fetch('/api/admin/payments', {
+      fetch("/api/admin/payments", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       }),
-      fetch('/api/admin/payments-summary', {
+      fetch("/api/admin/payments-summary", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       }),
-    ])
+    ]);
 
     if (paymentsRes.ok) {
-      const paymentsData = await paymentsRes.json().catch(() => null)
-      const rows = Array.isArray(paymentsData) ? paymentsData : paymentsData?.entries ?? []
+      const paymentsData = await paymentsRes.json().catch(() => null);
+      const rows = Array.isArray(paymentsData)
+        ? paymentsData
+        : (paymentsData?.entries ?? []);
 
-      setPaymentEntries(((rows ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
-        const nameA = a.profiles?.full_name || a.profiles?.email || 'Participante'
-        const nameB = b.profiles?.full_name || b.profiles?.email || 'Participante'
-        const byName = nameA.localeCompare(nameB, 'es', { sensitivity: 'base' })
-        if (byName !== 0) return byName
-        return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-      }))
+      setPaymentEntries(
+        ((rows ?? []) as AdminPaymentEntryRow[]).sort((a, b) => {
+          const nameA =
+            a.profiles?.full_name || a.profiles?.email || "Participante";
+          const nameB =
+            b.profiles?.full_name || b.profiles?.email || "Participante";
+          const byName = nameA.localeCompare(nameB, "es", {
+            sensitivity: "base",
+          });
+          if (byName !== 0) return byName;
+          return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+        }),
+      );
     } else {
-      const payload = await paymentsRes.json().catch(() => null)
-      console.error('Error refrescando pagos admin:', payload?.error || paymentsRes.statusText)
+      const payload = await paymentsRes.json().catch(() => null);
+      console.error(
+        "Error refrescando pagos admin:",
+        payload?.error || paymentsRes.statusText,
+      );
     }
 
     if (financeRes.ok) {
-      const financeData = await financeRes.json().catch(() => null)
-      setFinanceSummary(financeData as FinanceSummary)
+      const financeData = await financeRes.json().catch(() => null);
+      setFinanceSummary(financeData as FinanceSummary);
     } else {
-      const payload = await financeRes.json().catch(() => null)
-      console.error('Error refrescando dashboard financiero:', payload?.error || financeRes.statusText)
+      const payload = await financeRes.json().catch(() => null);
+      console.error(
+        "Error refrescando dashboard financiero:",
+        payload?.error || financeRes.statusText,
+      );
     }
-  }
+  };
 
   const updateEntryPayment = async (
     entryId: string,
-    paymentStatus: 'paid' | 'pending' | 'exempt'
+    paymentStatus: "paid" | "pending" | "exempt",
   ) => {
-    setUpdatingPaymentId(entryId)
+    setUpdatingPaymentId(entryId);
 
     try {
-      const token = await getSafeAccessToken()
+      const token = await getSafeAccessToken();
 
       if (!token) {
-        alert('Tu sesión expiró. Inicia sesión nuevamente.')
-        return
+        alert("Tu sesión expiró. Inicia sesión nuevamente.");
+        return;
       }
 
-      const res = await fetch('/api/admin/update-entry-payment', {
-        method: 'POST',
+      const res = await fetch("/api/admin/update-entry-payment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           entryId,
           paymentStatus,
         }),
-      })
+      });
 
-      const payload = await res.json().catch(() => null)
+      const payload = await res.json().catch(() => null);
 
       if (!res.ok || !payload?.success) {
-        alert(payload?.error || 'No se pudo actualizar el pago.')
-        return
+        alert(payload?.error || "No se pudo actualizar el pago.");
+        return;
       }
 
-      const updatedEntry = payload.entry as AdminPaymentEntryRow
+      const updatedEntry = payload.entry as AdminPaymentEntryRow;
 
       setPaymentEntries((prev) =>
         prev.map((entry) =>
@@ -2326,43 +2506,46 @@ payload: ${JSON.stringify(payload)}`)
                 ...updatedEntry,
                 profiles: entry.profiles,
               }
-            : entry
-        )
-      )
+            : entry,
+        ),
+      );
 
-      await refreshAdminPaymentData()
+      await refreshAdminPaymentData();
     } catch (err) {
-      console.error('Error actualizando pago:', err)
-      alert('Error inesperado al actualizar el pago.')
+      console.error("Error actualizando pago:", err);
+      alert("Error inesperado al actualizar el pago.");
     } finally {
-      setUpdatingPaymentId(null)
+      setUpdatingPaymentId(null);
     }
-  }
+  };
 
   const markEntryAsPaid = async (entryId: string) => {
-    await updateEntryPayment(entryId, 'paid')
-  }
+    await updateEntryPayment(entryId, "paid");
+  };
 
   const markEntryAsPending = async (entryId: string) => {
-    await updateEntryPayment(entryId, 'pending')
-  }
+    await updateEntryPayment(entryId, "pending");
+  };
 
   const markEntryAsExempt = async (entryId: string) => {
-    await updateEntryPayment(entryId, 'exempt')
-  }
+    await updateEntryPayment(entryId, "exempt");
+  };
 
   const scrollToAdminSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId)
-    if (!element) return
+    const element = document.getElementById(sectionId);
+    if (!element) return;
 
     element.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
   return (
-    <main id="admin-top" className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
+    <main
+      id="admin-top"
+      className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8"
+    >
       <div className="mx-auto max-w-7xl">
         <button
           onClick={onBack}
@@ -2385,7 +2568,6 @@ payload: ${JSON.stringify(payload)}`)
           </p>
         </div>
 
-
         <section className="mt-8 rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-emerald-400/10 via-white/[0.03] to-black p-5 shadow-xl sm:p-6 md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -2398,11 +2580,13 @@ payload: ${JSON.stringify(payload)}`)
               </h2>
 
               <p className="mt-3 max-w-3xl text-sm leading-6 text-white/65 md:text-base">
-                Resumen seguro de pagos confirmados, bolsa acumulada, gastos administrativos y últimos movimientos.
+                Resumen seguro de pagos confirmados, bolsa acumulada, gastos
+                administrativos y últimos movimientos.
               </p>
 
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
-                Los datos vienen del endpoint admin protegido; no se calculan ni se autorizan desde el navegador.
+                Los datos vienen del endpoint admin protegido; no se calculan ni
+                se autorizan desde el navegador.
               </p>
             </div>
 
@@ -2412,11 +2596,12 @@ payload: ${JSON.stringify(payload)}`)
               </p>
               <p className="mt-2 text-4xl font-black text-emerald-300">
                 {financeLoading
-                  ? '...'
+                  ? "..."
                   : formatCurrencyMXN(financeSummary?.totalCollected ?? 0)}
               </p>
               <p className="mt-2 text-xs text-white/45">
-                Mercado Pago: {formatCurrencyMXN(financeSummary?.mercadopagoCollected ?? 0)}
+                Mercado Pago:{" "}
+                {formatCurrencyMXN(financeSummary?.mercadopagoCollected ?? 0)}
               </p>
             </div>
           </div>
@@ -2427,7 +2612,9 @@ payload: ${JSON.stringify(payload)}`)
                 Pagos aprobados
               </p>
               <p className="mt-2 text-2xl font-bold text-white">
-                {financeLoading ? '...' : financeSummary?.approvedPaymentsCount ?? 0}
+                {financeLoading
+                  ? "..."
+                  : (financeSummary?.approvedPaymentsCount ?? 0)}
               </p>
             </div>
 
@@ -2437,8 +2624,10 @@ payload: ${JSON.stringify(payload)}`)
               </p>
               <p className="mt-2 text-2xl font-bold text-yellow-300">
                 {financeLoading
-                  ? '...'
-                  : formatCurrencyMXN(financeSummary?.prizePool ?? GUARANTEED_PRIZE_POOL)}
+                  ? "..."
+                  : formatCurrencyMXN(
+                      financeSummary?.prizePool ?? GUARANTEED_PRIZE_POOL,
+                    )}
               </p>
             </div>
 
@@ -2448,7 +2637,7 @@ payload: ${JSON.stringify(payload)}`)
               </p>
               <p className="mt-2 text-2xl font-bold text-white">
                 {financeLoading
-                  ? '...'
+                  ? "..."
                   : formatCurrencyMXN(financeSummary?.adminFees ?? 0)}
               </p>
             </div>
@@ -2458,16 +2647,14 @@ payload: ${JSON.stringify(payload)}`)
                 Pendientes
               </p>
               <p className="mt-2 text-2xl font-bold text-red-100">
-                {financeLoading ? '...' : financeSummary?.pendingEntries ?? 0}
+                {financeLoading ? "..." : (financeSummary?.pendingEntries ?? 0)}
               </p>
             </div>
           </div>
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-black text-white">
-                Últimos pagos
-              </h3>
+              <h3 className="text-lg font-black text-white">Últimos pagos</h3>
 
               <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/60">
                 Mercado Pago
@@ -2475,9 +2662,13 @@ payload: ${JSON.stringify(payload)}`)
             </div>
 
             {financeLoading ? (
-              <p className="mt-4 text-sm text-white/50">Cargando movimientos...</p>
+              <p className="mt-4 text-sm text-white/50">
+                Cargando movimientos...
+              </p>
             ) : !financeSummary?.recentPayments?.length ? (
-              <p className="mt-4 text-sm text-white/50">Todavía no hay pagos registrados.</p>
+              <p className="mt-4 text-sm text-white/50">
+                Todavía no hay pagos registrados.
+              </p>
             ) : (
               <div className="mt-4 divide-y divide-white/10">
                 {financeSummary.recentPayments.slice(0, 5).map((payment) => (
@@ -2506,8 +2697,8 @@ payload: ${JSON.stringify(payload)}`)
 
                     <div className="text-xs text-white/45 md:text-right">
                       {payment.created_at
-                        ? new Date(payment.created_at).toLocaleString('es-MX')
-                        : 'Sin fecha'}
+                        ? new Date(payment.created_at).toLocaleString("es-MX")
+                        : "Sin fecha"}
                     </div>
                   </div>
                 ))}
@@ -2519,7 +2710,7 @@ payload: ${JSON.stringify(payload)}`)
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => scrollToAdminSection('admin-payments')}
+            onClick={() => scrollToAdminSection("admin-payments")}
             className="rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-sm font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
           >
             💰 Ir a Bolsa + pagos
@@ -2527,7 +2718,7 @@ payload: ${JSON.stringify(payload)}`)
 
           <button
             type="button"
-            onClick={() => scrollToAdminSection('admin-users')}
+            onClick={() => scrollToAdminSection("admin-users")}
             className="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-black text-white shadow-lg transition hover:bg-white/15 active:scale-[0.98]"
           >
             👥 Ir a Usuarios registrados
@@ -2554,14 +2745,14 @@ payload: ${JSON.stringify(payload)}`)
               <div className="space-y-4">
                 {matches.map((match) => {
                   const current = results[match.id] ?? {
-                    homeScore: '',
-                    awayScore: '',
-                  }
+                    homeScore: "",
+                    awayScore: "",
+                  };
 
                   const state = matchStates[match.id] ?? {
                     isOpen: true,
                     isFinished: false,
-                  }
+                  };
 
                   return (
                     <div
@@ -2589,7 +2780,9 @@ payload: ${JSON.stringify(payload)}`)
                                 <div className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px]">
                                   {match.homeCode}
                                 </div>
-                                <span className="block max-w-full break-words text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">{match.homeTeam}</span>
+                                <span className="block max-w-full break-words text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">
+                                  {match.homeTeam}
+                                </span>
                               </div>
                             </div>
 
@@ -2604,7 +2797,9 @@ payload: ${JSON.stringify(payload)}`)
                                 <div className="text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px]">
                                   {match.awayCode}
                                 </div>
-                                <span className="block max-w-full break-words text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">{match.awayTeam}</span>
+                                <span className="block max-w-full break-words text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">
+                                  {match.awayTeam}
+                                </span>
                               </div>
                               <div className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/10">
                                 <Image
@@ -2631,31 +2826,43 @@ payload: ${JSON.stringify(payload)}`)
                                 inputMode="numeric"
                                 value={current.homeScore}
                                 onChange={(e) =>
-                                  updateResult(match.id, 'homeScore', e.target.value)
+                                  updateResult(
+                                    match.id,
+                                    "homeScore",
+                                    e.target.value,
+                                  )
                                 }
                                 className="h-12 w-12 sm:h-14 sm:w-16 rounded-xl sm:rounded-2xl border border-white/10 bg-white/10 text-center text-lg sm:text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
                                 placeholder=""
                               />
-                              <span className="text-lg font-semibold text-white/50">-</span>
+                              <span className="text-lg font-semibold text-white/50">
+                                -
+                              </span>
                               <input
                                 type="text"
                                 inputMode="numeric"
                                 value={current.awayScore}
                                 onChange={(e) =>
-                                  updateResult(match.id, 'awayScore', e.target.value)
+                                  updateResult(
+                                    match.id,
+                                    "awayScore",
+                                    e.target.value,
+                                  )
                                 }
                                 className="h-12 w-12 sm:h-14 sm:w-16 rounded-xl sm:rounded-2xl border border-white/10 bg-white/10 text-center text-lg sm:text-xl font-bold text-white outline-none transition disabled:opacity-30 disabled:cursor-not-allowed"
                               />
                               <button
-  onClick={() => saveOfficialResult(match.id)}
-  disabled={savingId === match.id}
+                                onClick={() => saveOfficialResult(match.id)}
+                                disabled={savingId === match.id}
                                 className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                                   savingId === match.id
-  ? 'bg-white/10 text-white/40 cursor-not-allowed'
-  : 'bg-white text-black hover:bg-white/90'
+                                    ? "bg-white/10 text-white/40 cursor-not-allowed"
+                                    : "bg-white text-black hover:bg-white/90"
                                 }`}
                               >
-                                {savingId === match.id ? 'Guardando...' : 'Guardar'}
+                                {savingId === match.id
+                                  ? "Guardando..."
+                                  : "Guardar"}
                               </button>
                             </div>
                           </div>
@@ -2669,30 +2876,35 @@ payload: ${JSON.stringify(payload)}`)
                               <span
                                 className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${
                                   state.isOpen
-                                    ? 'bg-emerald-400/10 text-emerald-200'
-                                    : 'bg-red-400/10 text-red-200'
+                                    ? "bg-emerald-400/10 text-emerald-200"
+                                    : "bg-red-400/10 text-red-200"
                                 }`}
                               >
-                                {state.isOpen ? 'Abierto' : 'Cerrado'}
+                                {state.isOpen ? "Abierto" : "Cerrado"}
                               </span>
 
                               <button
-                                onClick={() => toggleMatchOpen(match.id, state.isOpen)}
+                                onClick={() =>
+                                  toggleMatchOpen(match.id, state.isOpen)
+                                }
                                 className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
                               >
-                                {state.isOpen ? 'Cerrar picks' : 'Abrir picks'}
+                                {state.isOpen ? "Cerrar picks" : "Abrir picks"}
                               </button>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </section>
           ))}
-          <section id="admin-payments" className="scroll-mt-8 mt-8 rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black p-4 shadow-xl sm:p-6 md:p-8">
+          <section
+            id="admin-payments"
+            className="scroll-mt-8 mt-8 rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black p-4 shadow-xl sm:p-6 md:p-8"
+          >
             <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
               <div>
                 <div className="inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.24em] text-yellow-200">
@@ -2704,9 +2916,12 @@ payload: ${JSON.stringify(payload)}`)
                 </h2>
 
                 <p className="mt-3 max-w-4xl text-sm leading-6 text-white/70 md:text-base">
-                  Cada quiniela cuesta {formatCurrencyMXN(ENTRY_PRICE)}. De cada pago,
-                  {formatCurrencyMXN(ADMIN_FEE_PER_ENTRY)} se quedan como gastos de administración
-                  y {formatCurrencyMXN(PRIZE_CONTRIBUTION_PER_ENTRY)} integran la bolsa.
+                  Cada quiniela cuesta {formatCurrencyMXN(ENTRY_PRICE)}. De cada
+                  pago,
+                  {formatCurrencyMXN(ADMIN_FEE_PER_ENTRY)} se quedan como gastos
+                  de administración y{" "}
+                  {formatCurrencyMXN(PRIZE_CONTRIBUTION_PER_ENTRY)} integran la
+                  bolsa.
                 </p>
 
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
@@ -2729,28 +2944,48 @@ payload: ${JSON.stringify(payload)}`)
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Quinielas</p>
-                <p className="mt-2 text-2xl font-bold text-white">{paymentSummary.totalEntries}</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
+                  Quinielas
+                </p>
+                <p className="mt-2 text-2xl font-bold text-white">
+                  {paymentSummary.totalEntries}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">Pagadas</p>
-                <p className="mt-2 text-2xl font-bold text-emerald-100">{paymentSummary.paidEntries}</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">
+                  Pagadas
+                </p>
+                <p className="mt-2 text-2xl font-bold text-emerald-100">
+                  {paymentSummary.paidEntries}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-red-200/70">Pendientes</p>
-                <p className="mt-2 text-2xl font-bold text-red-100">{paymentSummary.pendingEntries}</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-red-200/70">
+                  Pendientes
+                </p>
+                <p className="mt-2 text-2xl font-bold text-red-100">
+                  {paymentSummary.pendingEntries}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Recaudado</p>
-                <p className="mt-2 text-2xl font-bold text-white">{formatCurrencyMXN(paymentSummary.totalCollected)}</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
+                  Recaudado
+                </p>
+                <p className="mt-2 text-2xl font-bold text-white">
+                  {formatCurrencyMXN(paymentSummary.totalCollected)}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Gastos admin</p>
-                <p className="mt-2 text-2xl font-bold text-white">{formatCurrencyMXN(paymentSummary.adminFees)}</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
+                  Gastos admin
+                </p>
+                <p className="mt-2 text-2xl font-bold text-white">
+                  {formatCurrencyMXN(paymentSummary.adminFees)}
+                </p>
               </div>
             </div>
 
@@ -2766,13 +3001,14 @@ payload: ${JSON.stringify(payload)}`)
                 </div>
 
                 <span className="w-fit rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/70">
-                  {filteredPaymentEntries.length} de {paymentEntries.length} quinielas
+                  {filteredPaymentEntries.length} de {paymentEntries.length}{" "}
+                  quinielas
                 </span>
               </div>
 
               <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {paymentFilterOptions.map((option) => {
-                  const isActive = paymentFilter === option.key
+                  const isActive = paymentFilter === option.key;
 
                   return (
                     <button
@@ -2781,18 +3017,16 @@ payload: ${JSON.stringify(payload)}`)
                       onClick={() => setPaymentFilter(option.key)}
                       className={`rounded-2xl border px-4 py-3 text-left transition active:scale-[0.98] ${
                         isActive
-                          ? 'border-yellow-400/35 bg-yellow-400/15 text-yellow-100 shadow-[0_0_24px_rgba(250,204,21,0.10)]'
-                          : 'border-white/10 bg-black/25 text-white/65 hover:bg-white/10 hover:text-white'
+                          ? "border-yellow-400/35 bg-yellow-400/15 text-yellow-100 shadow-[0_0_24px_rgba(250,204,21,0.10)]"
+                          : "border-white/10 bg-black/25 text-white/65 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       <p className="text-[10px] font-black uppercase tracking-[0.2em]">
                         {option.label}
                       </p>
-                      <p className="mt-1 text-2xl font-black">
-                        {option.count}
-                      </p>
+                      <p className="mt-1 text-2xl font-black">{option.count}</p>
                     </button>
-                  )
+                  );
                 })}
               </div>
 
@@ -2820,8 +3054,11 @@ payload: ${JSON.stringify(payload)}`)
 
                   <div className="divide-y divide-white/10">
                     {filteredPaymentEntries.map((entry) => {
-                      const isUpdating = updatingPaymentId === entry.id
-                      const pendingAmount = Math.max(ENTRY_PRICE - Number(entry.payment_amount ?? 0), 0)
+                      const isUpdating = updatingPaymentId === entry.id;
+                      const pendingAmount = Math.max(
+                        ENTRY_PRICE - Number(entry.payment_amount ?? 0),
+                        0,
+                      );
 
                       return (
                         <div
@@ -2830,37 +3067,48 @@ payload: ${JSON.stringify(payload)}`)
                         >
                           <div className="min-w-0">
                             <p className="font-bold text-white">
-                              {entry.profiles?.full_name || 'Participante'}
+                              {entry.profiles?.full_name || "Participante"}
                             </p>
                             <p className="mt-1 truncate text-xs text-white/45">
-                              {entry.profiles?.email || 'Sin email'}
-                              {entry.profiles?.phone ? ` · ${entry.profiles.phone}` : ''}
+                              {entry.profiles?.email || "Sin email"}
+                              {entry.profiles?.phone
+                                ? ` · ${entry.profiles.phone}`
+                                : ""}
                             </p>
                           </div>
 
                           <div className="min-w-0">
-                            <p className="font-semibold text-white/85">{entry.name}</p>
-                            {entry.payment_status !== 'paid' && entry.payment_status !== 'exempt' && (
-                              <p className="mt-1 text-xs font-semibold text-red-200">
-                                Pendiente: {formatCurrencyMXN(pendingAmount)}
-                              </p>
-                            )}
+                            <p className="font-semibold text-white/85">
+                              {entry.name}
+                            </p>
+                            {entry.payment_status !== "paid" &&
+                              entry.payment_status !== "exempt" && (
+                                <p className="mt-1 text-xs font-semibold text-red-200">
+                                  Pendiente: {formatCurrencyMXN(pendingAmount)}
+                                </p>
+                              )}
                           </div>
 
                           <div>
-                            <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${getPaymentStatusClass(entry.payment_status)}`}>
+                            <span
+                              className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${getPaymentStatusClass(entry.payment_status)}`}
+                            >
                               {getPaymentStatusLabel(entry.payment_status)}
                             </span>
                           </div>
 
                           <div className="min-w-0 text-left leading-tight lg:text-right">
                             <p className="whitespace-nowrap text-sm font-black text-white">
-                              {formatCurrencyMXN(Number(entry.payment_amount ?? 0))}
+                              {formatCurrencyMXN(
+                                Number(entry.payment_amount ?? 0),
+                              )}
                             </p>
                             <p className="mt-1 whitespace-nowrap text-[11px] text-white/45">
                               {entry.paid_at
-                                ? new Date(entry.paid_at).toLocaleDateString('es-MX')
-                                : 'Sin fecha'}
+                                ? new Date(entry.paid_at).toLocaleDateString(
+                                    "es-MX",
+                                  )
+                                : "Sin fecha"}
                             </p>
                           </div>
 
@@ -2892,59 +3140,74 @@ payload: ${JSON.stringify(payload)}`)
                               Exento
                             </button>
                             <button
-  type="button"
-  disabled={isUpdating}
-  onClick={async () => {
-    const confirmDelete = window.confirm(
-      `¿Borrar la quiniela "${entry.name}"? Esto eliminará también sus picks.`
-    )
-    if (!confirmDelete) return
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={async () => {
+                                const confirmDelete = window.confirm(
+                                  `¿Borrar la quiniela "${entry.name}"? Esto eliminará también sus picks.`,
+                                );
+                                if (!confirmDelete) return;
 
-   setUpdatingPaymentId(entry.id)
+                                setUpdatingPaymentId(entry.id);
 
-try {
-  const token = await getSafeAccessToken()
+                                try {
+                                  const token = await getSafeAccessToken();
 
-  if (!token) {
-    alert('Tu sesión expiró. Inicia sesión nuevamente.')
-    return
-  }
+                                  if (!token) {
+                                    alert(
+                                      "Tu sesión expiró. Inicia sesión nuevamente.",
+                                    );
+                                    return;
+                                  }
 
-  const res = await fetch('/api/admin/delete-entry', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      entryId: entry.id,
-    }),
-  })
+                                  const res = await fetch(
+                                    "/api/admin/delete-entry",
+                                    {
+                                      method: "POST",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${token}`,
+                                      },
+                                      body: JSON.stringify({
+                                        entryId: entry.id,
+                                      }),
+                                    },
+                                  );
 
-  const payload = await res.json().catch(() => null)
+                                  const payload = await res
+                                    .json()
+                                    .catch(() => null);
 
-  if (!res.ok) {
-    alert(payload?.error || 'Error al borrar quiniela.')
-    return
-  }
+                                  if (!res.ok) {
+                                    alert(
+                                      payload?.error ||
+                                        "Error al borrar quiniela.",
+                                    );
+                                    return;
+                                  }
 
-  setPaymentEntries((prev) => prev.filter((e) => e.id !== entry.id))
+                                  setPaymentEntries((prev) =>
+                                    prev.filter((e) => e.id !== entry.id),
+                                  );
 
-  alert('Quiniela borrada correctamente ✅')
-} catch (err) {
-  console.error('Error borrando quiniela:', err)
-  alert('Error inesperado al borrar quiniela.')
-} finally {
-  setUpdatingPaymentId(null)
-}
-  }}
-  className="min-h-[52px] min-w-[92px] rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold leading-tight text-red-300 transition hover:bg-red-500/15"
->
-  Borrar quiniela
-</button>
+                                  alert("Quiniela borrada correctamente ✅");
+                                } catch (err) {
+                                  console.error(
+                                    "Error borrando quiniela:",
+                                    err,
+                                  );
+                                  alert("Error inesperado al borrar quiniela.");
+                                } finally {
+                                  setUpdatingPaymentId(null);
+                                }
+                              }}
+                              className="min-h-[52px] min-w-[92px] rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-bold leading-tight text-red-300 transition hover:bg-red-500/15"
+                            >
+                              Borrar quiniela
+                            </button>
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 </div>
@@ -2954,7 +3217,7 @@ try {
             <div className="mt-8 grid gap-3 border-t border-white/10 pt-6 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => scrollToAdminSection('admin-top')}
+                onClick={() => scrollToAdminSection("admin-top")}
                 className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
               >
                 ↑ Ir arriba
@@ -2969,14 +3232,18 @@ try {
               </button>
             </div>
 
-            <div id="admin-users" className="scroll-mt-8 mt-10 border-t border-white/10 pt-8">
+            <div
+              id="admin-users"
+              className="scroll-mt-8 mt-10 border-t border-white/10 pt-8"
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-yellow-400">
                     Usuarios registrados
                   </h3>
                   <p className="mt-2 text-sm text-white/60">
-                    Esta tabla solo sirve para borrar usuarios junto con sus quinielas y picks.
+                    Esta tabla solo sirve para borrar usuarios junto con sus
+                    quinielas y picks.
                   </p>
                 </div>
 
@@ -3005,22 +3272,22 @@ try {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="break-words text-sm font-black leading-5 text-white">
-                              {adminUser.full_name || 'Sin nombre'}
+                              {adminUser.full_name || "Sin nombre"}
                             </p>
 
                             <p className="mt-2 break-all text-xs leading-5 text-white/60">
-                              {adminUser.email || 'Sin email'}
+                              {adminUser.email || "Sin email"}
                             </p>
                           </div>
 
                           <span
                             className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                              adminUser.role === 'admin'
-                                ? 'bg-yellow-400/10 text-yellow-300'
-                                : 'bg-white/10 text-white/70'
+                              adminUser.role === "admin"
+                                ? "bg-yellow-400/10 text-yellow-300"
+                                : "bg-white/10 text-white/70"
                             }`}
                           >
-                            {adminUser.role || 'player'}
+                            {adminUser.role || "player"}
                           </span>
                         </div>
 
@@ -3030,11 +3297,13 @@ try {
                           disabled={deletingUserId === adminUser.id}
                           className={`mt-4 w-full rounded-xl px-4 py-3 text-sm font-black transition active:scale-[0.98] ${
                             deletingUserId === adminUser.id
-                              ? 'cursor-not-allowed bg-white/10 text-white/35'
-                              : 'bg-red-400/10 text-red-200 hover:bg-red-400/15'
+                              ? "cursor-not-allowed bg-white/10 text-white/35"
+                              : "bg-red-400/10 text-red-200 hover:bg-red-400/15"
                           }`}
                         >
-                          {deletingUserId === adminUser.id ? 'Borrando...' : 'Borrar usuario'}
+                          {deletingUserId === adminUser.id
+                            ? "Borrando..."
+                            : "Borrar usuario"}
                         </button>
                       </article>
                     ))}
@@ -3055,22 +3324,22 @@ try {
                         className="grid grid-cols-[1.4fr_1.6fr_120px_140px] items-center border-b border-white/10 px-4 py-4 text-sm last:border-b-0"
                       >
                         <div className="min-w-0 break-words pr-3 font-semibold text-white">
-                          {adminUser.full_name || 'Sin nombre'}
+                          {adminUser.full_name || "Sin nombre"}
                         </div>
 
                         <div className="min-w-0 break-all pr-3 text-white/70">
-                          {adminUser.email || 'Sin email'}
+                          {adminUser.email || "Sin email"}
                         </div>
 
                         <div>
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                              adminUser.role === 'admin'
-                                ? 'bg-yellow-400/10 text-yellow-300'
-                                : 'bg-white/10 text-white/70'
+                              adminUser.role === "admin"
+                                ? "bg-yellow-400/10 text-yellow-300"
+                                : "bg-white/10 text-white/70"
                             }`}
                           >
-                            {adminUser.role || 'player'}
+                            {adminUser.role || "player"}
                           </span>
                         </div>
 
@@ -3081,11 +3350,13 @@ try {
                             disabled={deletingUserId === adminUser.id}
                             className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
                               deletingUserId === adminUser.id
-                                ? 'cursor-not-allowed bg-white/10 text-white/35'
-                                : 'bg-red-400/10 text-red-200 hover:bg-red-400/15'
+                                ? "cursor-not-allowed bg-white/10 text-white/35"
+                                : "bg-red-400/10 text-red-200 hover:bg-red-400/15"
                             }`}
                           >
-                            {deletingUserId === adminUser.id ? 'Borrando...' : 'Borrar'}
+                            {deletingUserId === adminUser.id
+                              ? "Borrando..."
+                              : "Borrar"}
                           </button>
                         </div>
                       </div>
@@ -3098,7 +3369,7 @@ try {
             <div className="mt-8 grid gap-3 border-t border-white/10 pt-6 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={() => scrollToAdminSection('admin-top')}
+                onClick={() => scrollToAdminSection("admin-top")}
                 className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
               >
                 ↑ Ir arriba
@@ -3106,7 +3377,7 @@ try {
 
               <button
                 type="button"
-                onClick={() => scrollToAdminSection('admin-payments')}
+                onClick={() => scrollToAdminSection("admin-payments")}
                 className="rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-3 text-sm font-bold text-yellow-100 transition hover:bg-yellow-400/15 active:scale-[0.98]"
               >
                 💰 Ir a Bolsa + pagos
@@ -3123,192 +3394,239 @@ try {
           </section>
         </div>
       </div>
-    
-
-</main>
-  )
+    </main>
+  );
 }
 
 function PublicPicksScreen({
   onBack,
   user,
 }: {
-  onBack: () => void
-  user: UserState
+  onBack: () => void;
+  user: UserState;
 }) {
-  const [rows, setRows] = useState<any[]>([])
-  const [openMatchId, setOpenMatchId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [publicMatchMeta, setPublicMatchMeta] = useState<Record<string, PublicMatchMetaRow>>({})
-  const canView = user?.role === 'admin' || new Date() >= PUBLIC_REVEAL_DATE
+  const [rows, setRows] = useState<any[]>([]);
+  const [openMatchId, setOpenMatchId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [publicMatchMeta, setPublicMatchMeta] = useState<
+    Record<string, PublicMatchMetaRow>
+  >({});
+  const canView = user?.role === "admin" || new Date() >= PUBLIC_REVEAL_DATE;
 
-  useScrollToPageTop([])
+  useScrollToPageTop([]);
 
   useEffect(() => {
-  if (!canView) {
-    setLoading(false)
-    return
-  }
-
-  let mounted = true
-
-  const load = async () => {
-    setLoading(true)
-
-    const token = await getSafeAccessToken()
-
-    const [picksRes, { data: matchesData, error: matchesError }] = await Promise.all([
-      fetch('/api/public/picks', {
-        headers: token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {},
-      }),
-      supabase
-        .from('matches')
-        .select('id, home_score, away_score, is_open, is_finished')
-        .in('id', MATCHES.map((match) => match.id)),
-    ])
-
-    if (!mounted) return
-
-    if (!picksRes.ok) {
-      const payload = await picksRes.json().catch(() => null)
-      console.error('Error cargando picks públicos:', payload?.error || picksRes.statusText)
-      setRows([])
-      setLoading(false)
-      return
+    if (!canView) {
+      setLoading(false);
+      return;
     }
 
-    if (matchesError) {
-      console.error(matchesError.message)
-    }
+    let mounted = true;
 
-    const picksData = await picksRes.json()
-    const matchMetaMap: Record<string, PublicMatchMetaRow> = {}
+    const load = async () => {
+      setLoading(true);
 
-    ;((matchesData ?? []) as PublicMatchMetaRow[]).forEach((matchRow) => {
-      matchMetaMap[matchRow.id] = matchRow
-    })
+      const token = await getSafeAccessToken();
 
-    setPublicMatchMeta(matchMetaMap)
-    setRows(picksData ?? [])
-    setLoading(false)
-  }
+      const [picksRes, { data: matchesData, error: matchesError }] =
+        await Promise.all([
+          fetch("/api/public/picks", {
+            headers: token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : {},
+          }),
+          supabase
+            .from("matches")
+            .select("id, home_score, away_score, is_open, is_finished")
+            .in(
+              "id",
+              MATCHES.map((match) => match.id),
+            ),
+        ]);
 
-  load()
+      if (!mounted) return;
 
-  const channel = supabase
-    .channel('public-picks-refresh')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'profiles' },
-      load
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'predictions' },
-      load
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'matches' },
-      load
-    )
-    .subscribe()
+      if (!picksRes.ok) {
+        const payload = await picksRes.json().catch(() => null);
+        console.error(
+          "Error cargando picks públicos:",
+          payload?.error || picksRes.statusText,
+        );
+        setRows([]);
+        setLoading(false);
+        return;
+      }
 
-  return () => {
-    mounted = false
-    supabase.removeChannel(channel)
-  }
-}, [canView])
+      if (matchesError) {
+        console.error(matchesError.message);
+      }
+
+      const picksData = await picksRes.json();
+      const matchMetaMap: Record<string, PublicMatchMetaRow> = {};
+
+      ((matchesData ?? []) as PublicMatchMetaRow[]).forEach((matchRow) => {
+        matchMetaMap[matchRow.id] = matchRow;
+      });
+
+      setPublicMatchMeta(matchMetaMap);
+      setRows(picksData ?? []);
+      setLoading(false);
+    };
+
+    load();
+
+    const channel = supabase
+      .channel("public-picks-refresh")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        load,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "predictions" },
+        load,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        load,
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [canView]);
 
   const groupedByMatch = useMemo(() => {
-  const grouped: Record<string, any[]> = {}
+    const grouped: Record<string, any[]> = {};
 
-  rows.forEach((row) => {
-    if (!grouped[row.match_id]) grouped[row.match_id] = []
-    grouped[row.match_id].push(row)
-  })
+    rows.forEach((row) => {
+      if (!grouped[row.match_id]) grouped[row.match_id] = [];
+      grouped[row.match_id].push(row);
+    });
 
-  const isFinished = (matchId: string) => {
-    const meta = publicMatchMeta[matchId]
+    const isFinished = (matchId: string) => {
+      const meta = publicMatchMeta[matchId];
 
-    // IMPORTANTE:
-    // Para la vista pública, un partido solo baja al final cuando el admin lo cierra.
-    // Si tiene marcador pero sigue abierto, permanece en su posición original.
-    return meta?.is_open === false
-  }
+      // IMPORTANTE:
+      // Para la vista pública, un partido solo baja al final cuando el admin lo cierra.
+      // Si tiene marcador pero sigue abierto, permanece en su posición original.
+      return meta?.is_open === false;
+    };
 
-  const allVisibleMatchesFinished =
-    Object.keys(grouped).length > 0 && Object.keys(grouped).every((matchId) => isFinished(matchId))
+    const allVisibleMatchesFinished =
+      Object.keys(grouped).length > 0 &&
+      Object.keys(grouped).every((matchId) => isFinished(matchId));
 
-  const sortedEntries = Object.entries(grouped).sort(([matchIdA], [matchIdB]) => {
-    const matchA = MATCHES.find((match) => match.id === matchIdA)
-    const matchB = MATCHES.find((match) => match.id === matchIdB)
+    const sortedEntries = Object.entries(grouped).sort(
+      ([matchIdA], [matchIdB]) => {
+        const matchA = MATCHES.find((match) => match.id === matchIdA);
+        const matchB = MATCHES.find((match) => match.id === matchIdB);
 
-    const dateA = matchA ? parseKickoffToDate(matchA.kickoff)?.getTime() ?? 0 : 0
-    const dateB = matchB ? parseKickoffToDate(matchB.kickoff)?.getTime() ?? 0 : 0
+        const dateA = matchA
+          ? (parseKickoffToDate(matchA.kickoff)?.getTime() ?? 0)
+          : 0;
+        const dateB = matchB
+          ? (parseKickoffToDate(matchB.kickoff)?.getTime() ?? 0)
+          : 0;
 
-    if (!allVisibleMatchesFinished) {
-      const finishedA = isFinished(matchIdA)
-      const finishedB = isFinished(matchIdB)
+        if (!allVisibleMatchesFinished) {
+          const finishedA = isFinished(matchIdA);
+          const finishedB = isFinished(matchIdB);
 
-      if (finishedA !== finishedB) {
-        return finishedA ? 1 : -1
-      }
+          if (finishedA !== finishedB) {
+            return finishedA ? 1 : -1;
+          }
+        }
+
+        return dateA - dateB;
+      },
+    );
+
+    return Object.fromEntries(sortedEntries);
+  }, [rows, publicMatchMeta]);
+
+  const getMatchById = (matchId: string) => {
+    return MATCHES.find((match) => match.id === matchId);
+  };
+
+  const getPublicMatchMeta = (matchId: string) => {
+    return publicMatchMeta[matchId] ?? null;
+  };
+
+  const isPublicMatchFinished = (matchId: string) => {
+    const meta = getPublicMatchMeta(matchId);
+
+    // Solo se considera jugado/cerrado para ordenar cuando el admin cerró el partido.
+    return meta?.is_open === false;
+  };
+
+  const getResultStyle = (row: any, match: any) => {
+    if (match?.home_score == null || match?.away_score == null) {
+      return "text-emerald-300";
     }
 
-    return dateA - dateB
-  })
+    const ph = row.home_score_predicted;
+    const pa = row.away_score_predicted;
+    const oh = match.home_score;
+    const oa = match.away_score;
 
-  return Object.fromEntries(sortedEntries)
-}, [rows, publicMatchMeta])
+    if (ph === oh && pa === oa) {
+      return "bg-emerald-400/20 text-emerald-300";
+    }
 
- const getMatchById = (matchId: string) => {
-  return MATCHES.find((match) => match.id === matchId)
-}
+    const predicted = ph > pa ? "home" : ph < pa ? "away" : "draw";
+    const official = oh > oa ? "home" : oh < oa ? "away" : "draw";
 
-const getPublicMatchMeta = (matchId: string) => {
-  return publicMatchMeta[matchId] ?? null
-}
+    if (predicted === official) {
+      return "bg-amber-400/20 text-amber-300";
+    }
 
-const isPublicMatchFinished = (matchId: string) => {
-  const meta = getPublicMatchMeta(matchId)
+    return "bg-red-400/20 text-red-300";
+  };
 
-  // Solo se considera jugado/cerrado para ordenar cuando el admin cerró el partido.
-  return meta?.is_open === false
-}
+  if (!canView) {
+    return (
+      <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+        <div className="mx-auto max-w-7xl">
+          <button
+            onClick={onBack}
+            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+          >
+            ← Volver
+          </button>
 
-const getResultStyle = (row: any, match: any) => {
-  if (match?.home_score == null || match?.away_score == null) {
-  return 'text-emerald-300'
-}
+          <div className="relative overflow-hidden rounded-3xl border border-yellow-500/40 bg-black/95 p-8 shadow-[0_0_30px_rgba(234,179,8,0.15)] md:p-10">
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/5" />
+            <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
 
-  const ph = row.home_score_predicted
-  const pa = row.away_score_predicted
-  const oh = match.home_score
-  const oa = match.away_score
+            <div className="relative z-10">
+              <h1 className="text-4xl font-extrabold tracking-tight text-yellow-400 md:text-6xl">
+                Todas las Quinielas
+              </h1>
+              <p className="mt-4 max-w-3xl text-lg text-white/80">
+                Da clic en el partido que desees visualizar para que se abran
+                los resultados que pusieron todos los participantes.
+              </p>
+            </div>
+          </div>
 
-  if (ph === oh && pa === oa) {
-    return 'bg-emerald-400/20 text-emerald-300'
+          <PublicRevealLockedCard />
+        </div>
+
+        <WhatsAppSupportButton user={user} />
+      </main>
+    );
   }
 
-  const predicted = ph > pa ? 'home' : ph < pa ? 'away' : 'draw'
-  const official = oh > oa ? 'home' : oh < oa ? 'away' : 'draw'
-
-  if (predicted === official) {
-    return 'bg-amber-400/20 text-amber-300'
-  }
-
-  return 'bg-red-400/20 text-red-300'
-}
-
-if (!canView) {
   return (
-    <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
+      <div className="mx-auto w-full max-w-7xl">
         <button
           onClick={onBack}
           className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
@@ -3316,63 +3634,31 @@ if (!canView) {
           ← Volver
         </button>
 
-        <div className="relative overflow-hidden rounded-3xl border border-yellow-500/40 bg-black/95 p-8 shadow-[0_0_30px_rgba(234,179,8,0.15)] md:p-10">
+        <div className="relative overflow-hidden rounded-3xl border border-yellow-500/40 bg-black/95 p-5 shadow-[0_0_30px_rgba(234,179,8,0.15)] sm:p-6 md:p-10">
           <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/5" />
           <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
 
-          <div className="relative z-10">
-            <h1 className="text-4xl font-extrabold tracking-tight text-yellow-400 md:text-6xl">
-              Todas las Quinielas
-            </h1>
-            <p className="mt-4 max-w-3xl text-lg text-white/80">
-              Da clic en el partido que desees visualizar para que se abran los resultados que pusieron todos los participantes.
-            </p>
+          <div className="relative z-10 flex items-start justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-yellow-400 sm:text-4xl md:text-6xl">
+                Todas las Quinielas
+              </h1>
+
+              <p className="mt-4 max-w-3xl text-base leading-7 text-white/80 md:text-lg">
+                Da clic en el partido que desees visualizar para que se abran
+                los resultados que pusieron todos los participantes.
+              </p>
+            </div>
+
+            <div className="hidden h-24 w-24 items-center justify-center rounded-full border border-yellow-500/40 bg-yellow-500/10 shadow-[0_0_40px_rgba(234,179,8,0.35)] md:flex">
+              <img
+                src="/people-icon.png"
+                alt="Usuarios"
+                className="h-40 w-40 object-contain drop-shadow-[0_0_12px_rgba(250,204,21,0.65)] animate-pulse"
+              />
+            </div>
           </div>
         </div>
-
-        <PublicRevealLockedCard />
-      </div>
-    
-<WhatsAppSupportButton user={user} />
-
-</main>
-  )
-}
-
-return (
-  <main className="min-h-screen overflow-x-hidden bg-black px-4 py-6 text-white sm:px-6 md:px-10 md:py-8">
-    <div className="mx-auto w-full max-w-7xl">
-      <button
-        onClick={onBack}
-        className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
-      >
-        ← Volver
-      </button>
-
-            <div className="relative overflow-hidden rounded-3xl border border-yellow-500/40 bg-black/95 p-5 shadow-[0_0_30px_rgba(234,179,8,0.15)] sm:p-6 md:p-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/5" />
-        <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
-
-        <div className="relative z-10 flex items-start justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-yellow-400 sm:text-4xl md:text-6xl">
-              Todas las Quinielas
-            </h1>
-
-            <p className="mt-4 max-w-3xl text-base leading-7 text-white/80 md:text-lg">
-              Da clic en el partido que desees visualizar para que se abran los resultados que pusieron todos los participantes.
-            </p>
-          </div>
-
-          <div className="hidden h-24 w-24 items-center justify-center rounded-full border border-yellow-500/40 bg-yellow-500/10 shadow-[0_0_40px_rgba(234,179,8,0.35)] md:flex">
-            <img
-  src="/people-icon.png"
-  alt="Usuarios"
-  className="h-40 w-40 object-contain drop-shadow-[0_0_12px_rgba(250,204,21,0.65)] animate-pulse"
-/>
-          </div>
-        </div>
-      </div>
 
         {loading ? (
           <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-white/70">
@@ -3381,306 +3667,314 @@ return (
         ) : (
           <div className="mt-8 space-y-8">
             {Object.entries(groupedByMatch).map(([matchId, picks]) => {
-              const match = getMatchById(matchId)
-              const matchMeta = getPublicMatchMeta(matchId)
-              const matchFinished = isPublicMatchFinished(matchId)
+              const match = getMatchById(matchId);
+              const matchMeta = getPublicMatchMeta(matchId);
+              const matchFinished = isPublicMatchFinished(matchId);
               const matchForScoring = {
                 ...(match ?? {}),
                 home_score: matchMeta?.home_score ?? null,
                 away_score: matchMeta?.away_score ?? null,
-              }
-              const isOpen = openMatchId === matchId
+              };
+              const isOpen = openMatchId === matchId;
 
               return (
-  <section
-    key={matchId}
-    onClick={() => setOpenMatchId(isOpen ? null : matchId)}
-    className={`w-full cursor-pointer overflow-hidden rounded-3xl border p-4 shadow-xl transition hover:border-yellow-400/30 hover:bg-white/[0.07] sm:p-5 md:p-6 ${
-      isOpen
-        ? 'border-yellow-400/30 bg-yellow-400/10 shadow-[0_0_30px_rgba(250,204,21,0.10)]'
-        : 'border-white/10 bg-white/5'
-    }`}
-  >
-    <div className="mb-8">
-  <div className="flex flex-wrap items-center justify-between gap-3">
-    <p className="text-xs uppercase tracking-[0.18em] text-white/45">
-      {match?.kickoff}
-    </p>
+                <section
+                  key={matchId}
+                  onClick={() => setOpenMatchId(isOpen ? null : matchId)}
+                  className={`w-full cursor-pointer overflow-hidden rounded-3xl border p-4 shadow-xl transition hover:border-yellow-400/30 hover:bg-white/[0.07] sm:p-5 md:p-6 ${
+                    isOpen
+                      ? "border-yellow-400/30 bg-yellow-400/10 shadow-[0_0_30px_rgba(250,204,21,0.10)]"
+                      : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  <div className="mb-8">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-white/45">
+                        {match?.kickoff}
+                      </p>
 
-    <div className="flex items-center gap-2">
-      <span
-        className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-          matchFinished
-            ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
-            : 'border-yellow-400/20 bg-yellow-400/10 text-yellow-200'
-        }`}
-      >
-        {matchFinished ? 'Jugado' : 'Por jugarse'}
-      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                            matchFinished
+                              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                              : "border-yellow-400/20 bg-yellow-400/10 text-yellow-200"
+                          }`}
+                        >
+                          {matchFinished ? "Jugado" : "Por jugarse"}
+                        </span>
 
-      <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300">
-        {isOpen ? 'Ocultar ▲' : 'Ver picks ▼'}
-      </span>
-    </div>
-  </div>
+                        <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300">
+                          {isOpen ? "Ocultar ▲" : "Ver picks ▼"}
+                        </span>
+                      </div>
+                    </div>
 
-  <div className="mt-6 grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] items-center gap-2 sm:gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-10">
-    <div className="flex min-w-0 flex-col items-center justify-end gap-2 text-center sm:flex-row sm:gap-3 md:gap-4">
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
-        <Image
-          src={match?.homeFlagUrl ?? '/favicon.ico'}
-          alt={match?.homeTeam ?? ''}
-          width={64}
-          height={44}
-          className="h-8 w-12 object-cover sm:h-10 sm:w-14 md:h-11 md:w-16"
-        />
-      </div>
+                    <div className="mt-6 grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] items-center gap-2 sm:gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-10">
+                      <div className="flex min-w-0 flex-col items-center justify-end gap-2 text-center sm:flex-row sm:gap-3 md:gap-4">
+                        <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
+                          <Image
+                            src={match?.homeFlagUrl ?? "/favicon.ico"}
+                            alt={match?.homeTeam ?? ""}
+                            width={64}
+                            height={44}
+                            className="h-8 w-12 object-cover sm:h-10 sm:w-14 md:h-11 md:w-16"
+                          />
+                        </div>
 
-      <div className="text-left">
-        <div className="text-sm uppercase tracking-[0.2em] text-emerald-300/80">
-          {match?.homeCode}
-        </div>
-        <span className="block max-w-full break-words text-xl font-extrabold leading-tight text-white sm:text-2xl md:text-4xl">
-          {match?.homeTeam}
-        </span>
-      </div>
-    </div>
+                        <div className="text-left">
+                          <div className="text-sm uppercase tracking-[0.2em] text-emerald-300/80">
+                            {match?.homeCode}
+                          </div>
+                          <span className="block max-w-full break-words text-xl font-extrabold leading-tight text-white sm:text-2xl md:text-4xl">
+                            {match?.homeTeam}
+                          </span>
+                        </div>
+                      </div>
 
-    <div className="flex items-center justify-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-white/70 sm:h-14 sm:w-14 sm:text-base md:h-16 md:w-16 md:text-xl">
-        VS
-      </div>
-    </div>
+                      <div className="flex items-center justify-center">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-white/70 sm:h-14 sm:w-14 sm:text-base md:h-16 md:w-16 md:text-xl">
+                          VS
+                        </div>
+                      </div>
 
-    <div className="flex min-w-0 flex-col-reverse items-center justify-start gap-2 text-center sm:flex-row sm:gap-3 md:gap-4">
-      <div className="text-center sm:text-right">
-        <div className="text-sm uppercase tracking-[0.2em] text-emerald-300/80">
-          {match?.awayCode}
-        </div>
-        <span className="block max-w-full break-words text-xl font-extrabold leading-tight text-white sm:text-2xl md:text-4xl">
-          {match?.awayTeam}
-        </span>
-      </div>
+                      <div className="flex min-w-0 flex-col-reverse items-center justify-start gap-2 text-center sm:flex-row sm:gap-3 md:gap-4">
+                        <div className="text-center sm:text-right">
+                          <div className="text-sm uppercase tracking-[0.2em] text-emerald-300/80">
+                            {match?.awayCode}
+                          </div>
+                          <span className="block max-w-full break-words text-xl font-extrabold leading-tight text-white sm:text-2xl md:text-4xl">
+                            {match?.awayTeam}
+                          </span>
+                        </div>
 
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
-        <Image
-          src={match?.awayFlagUrl ?? '/favicon.ico'}
-          alt={match?.awayTeam ?? ''}
-          width={64}
-          height={44}
-          className="h-8 w-12 object-cover sm:h-10 sm:w-14 md:h-11 md:w-16"
-        />
-      </div>
-    </div>
-  </div>
-</div>
+                        <div className="overflow-hidden rounded-xl border border-white/10 bg-white/10">
+                          <Image
+                            src={match?.awayFlagUrl ?? "/favicon.ico"}
+                            alt={match?.awayTeam ?? ""}
+                            width={64}
+                            height={44}
+                            className="h-8 w-12 object-cover sm:h-10 sm:w-14 md:h-11 md:w-16"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-    {isOpen && (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="mt-6 w-full cursor-default overflow-hidden rounded-2xl border border-white/10"
-    >
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)_70px] border-b border-yellow-500/20 bg-yellow-500/5 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-yellow-400 sm:px-4 sm:text-xs md:grid-cols-[1.5fr_1fr_120px] md:py-4 md:text-sm">
-        <div>Jugador</div>
-        <div>Quiniela</div>
-        <div className="text-right">Pick</div>
-      </div>
+                  {isOpen && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-6 w-full cursor-default overflow-hidden rounded-2xl border border-white/10"
+                    >
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)_70px] border-b border-yellow-500/20 bg-yellow-500/5 px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-yellow-400 sm:px-4 sm:text-xs md:grid-cols-[1.5fr_1fr_120px] md:py-4 md:text-sm">
+                        <div>Jugador</div>
+                        <div>Quiniela</div>
+                        <div className="text-right">Pick</div>
+                      </div>
 
-      {picks.map((row, index) => {
-  const isMe = row.entries?.profiles?.email === user?.email
+                      {picks.map((row, index) => {
+                        const isMe =
+                          row.entries?.profiles?.email === user?.email;
 
-  return (
-    <div
-      key={`${row.entries?.id}-${index}`}
-      className={`grid grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)_70px] items-center gap-2 border-b px-3 py-4 text-xs last:border-b-0 sm:px-4 sm:text-sm md:grid-cols-[1.5fr_1fr_120px] md:gap-0 md:py-5 ${
-  isMe
-    ? 'bg-emerald-400/10 border-emerald-400/20'
-    : 'border-yellow-500/10 bg-emerald-950/40'
-}`}
-    >
-          <div className="min-w-0 pr-1">
-  <p className="truncate text-xs font-semibold leading-tight text-white sm:text-sm md:text-base">
-    {row.entries?.profiles?.full_name || 'Jugador'}
-  </p>
-</div>
+                        return (
+                          <div
+                            key={`${row.entries?.id}-${index}`}
+                            className={`grid grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)_70px] items-center gap-2 border-b px-3 py-4 text-xs last:border-b-0 sm:px-4 sm:text-sm md:grid-cols-[1.5fr_1fr_120px] md:gap-0 md:py-5 ${
+                              isMe
+                                ? "bg-emerald-400/10 border-emerald-400/20"
+                                : "border-yellow-500/10 bg-emerald-950/40"
+                            }`}
+                          >
+                            <div className="min-w-0 pr-1">
+                              <p className="truncate text-xs font-semibold leading-tight text-white sm:text-sm md:text-base">
+                                {row.entries?.profiles?.full_name || "Jugador"}
+                              </p>
+                            </div>
 
-          <div className="min-w-0 truncate pr-1 text-xs font-medium leading-tight text-white/85 sm:text-sm">
-            {row.entries?.name}
-          </div>
+                            <div className="min-w-0 truncate pr-1 text-xs font-medium leading-tight text-white/85 sm:text-sm">
+                              {row.entries?.name}
+                            </div>
 
-          <div
-  className={`inline-block rounded-lg px-1.5 py-1 text-right text-base font-bold leading-tight sm:text-lg md:rounded-xl md:px-3 md:text-2xl ${getResultStyle(
-    row,
-    matchForScoring
-  )}`}
->
-  {row.home_score_predicted} - {row.away_score_predicted}
-</div>
-    </div>
-  )
-})}
-    </div>
-    )}
-  </section>
-)
-})}
+                            <div
+                              className={`inline-block rounded-lg px-1.5 py-1 text-right text-base font-bold leading-tight sm:text-lg md:rounded-xl md:px-3 md:text-2xl ${getResultStyle(
+                                row,
+                                matchForScoring,
+                              )}`}
+                            >
+                              {row.home_score_predicted} -{" "}
+                              {row.away_score_predicted}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
       </div>
-    
-<WhatsAppSupportButton user={user} />
 
-</main>
-  )
+      <WhatsAppSupportButton user={user} />
+    </main>
+  );
 }
 function PublicPicksByParticipantScreen({
   onBack,
   user,
   onOpenEntry,
 }: {
-  onBack: () => void
-  user: UserState
-  onOpenEntry: (entryId: string) => void
+  onBack: () => void;
+  user: UserState;
+  onOpenEntry: (entryId: string) => void;
 }) {
-  const [rows, setRows] = useState<PublicEntryRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
-  const [participantSearch, setParticipantSearch] = useState('')
-  const canView = user?.role === 'admin' || new Date() >= PUBLIC_REVEAL_DATE
+  const [rows, setRows] = useState<PublicEntryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [participantSearch, setParticipantSearch] = useState("");
+  const canView = user?.role === "admin" || new Date() >= PUBLIC_REVEAL_DATE;
 
-  useScrollToPageTop([])
+  useScrollToPageTop([]);
 
   useEffect(() => {
-  if (!canView) {
-    setLoading(false)
-    return
-  }
-
-  let mounted = true
-
-  const load = async () => {
-    setLoading(true)
-
-    const token = await getSafeAccessToken()
-
-    const res = await fetch('/api/public/entries', {
-      headers: token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : {},
-    })
-
-    if (!mounted) return
-
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null)
-      console.error('Error cargando quinielas por participante:', payload?.error || res.statusText)
-      setRows([])
-      setLoading(false)
-      return
+    if (!canView) {
+      setLoading(false);
+      return;
     }
 
-    const data = await res.json()
+    let mounted = true;
 
-    const safeRows = ((data ?? []) as PublicEntryRow[]).sort((a, b) => {
-      const nameA =
-        a.profiles?.full_name?.trim() ||
-        a.profiles?.email?.trim() ||
-        'Participante'
-      const nameB =
-        b.profiles?.full_name?.trim() ||
-        b.profiles?.email?.trim() ||
-        'Participante'
+    const load = async () => {
+      setLoading(true);
 
-      const byParticipant = nameA.localeCompare(nameB, 'es', {
-        sensitivity: 'base',
-      })
+      const token = await getSafeAccessToken();
 
-      if (byParticipant !== 0) return byParticipant
+      const res = await fetch("/api/public/entries", {
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
+      });
 
-      return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-    })
+      if (!mounted) return;
 
-    setRows(safeRows)
-    setLoading(false)
-  }
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        console.error(
+          "Error cargando quinielas por participante:",
+          payload?.error || res.statusText,
+        );
+        setRows([]);
+        setLoading(false);
+        return;
+      }
 
-  load()
+      const data = await res.json();
 
-  const channel = supabase
-    .channel('participants-refresh')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'profiles' },
-      load
-    )
-    .subscribe()
+      const safeRows = ((data ?? []) as PublicEntryRow[]).sort((a, b) => {
+        const nameA =
+          a.profiles?.full_name?.trim() ||
+          a.profiles?.email?.trim() ||
+          "Participante";
+        const nameB =
+          b.profiles?.full_name?.trim() ||
+          b.profiles?.email?.trim() ||
+          "Participante";
 
-  return () => {
-    mounted = false
-    supabase.removeChannel(channel)
-  }
-}, [canView])
+        const byParticipant = nameA.localeCompare(nameB, "es", {
+          sensitivity: "base",
+        });
+
+        if (byParticipant !== 0) return byParticipant;
+
+        return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+      });
+
+      setRows(safeRows);
+      setLoading(false);
+    };
+
+    load();
+
+    const channel = supabase
+      .channel("participants-refresh")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        load,
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [canView]);
 
   const participants = useMemo(() => {
     const map = new Map<
       string,
       {
-        user_id: string
-        full_name: string
-        email: string
-        entries: PublicEntryRow[]
+        user_id: string;
+        full_name: string;
+        email: string;
+        entries: PublicEntryRow[];
       }
-    >()
+    >();
 
     rows.forEach((row) => {
-      const current = map.get(row.user_id)
+      const current = map.get(row.user_id);
 
       if (current) {
-        current.entries.push(row)
-        return
+        current.entries.push(row);
+        return;
       }
 
       map.set(row.user_id, {
         user_id: row.user_id,
-        full_name: row.profiles?.full_name || 'Participante',
-        email: row.profiles?.email || '',
+        full_name: row.profiles?.full_name || "Participante",
+        email: row.profiles?.email || "",
         entries: [row],
-      })
-    })
+      });
+    });
 
     return Array.from(map.values()).sort((a, b) =>
-      a.full_name.localeCompare(b.full_name, 'es', { sensitivity: 'base' })
-    )
-  }, [rows])
+      a.full_name.localeCompare(b.full_name, "es", { sensitivity: "base" }),
+    );
+  }, [rows]);
 
   const filteredParticipants = useMemo(() => {
-    const query = normalizeSearchText(participantSearch)
+    const query = normalizeSearchText(participantSearch);
 
-    if (!query) return participants
+    if (!query) return participants;
 
     return participants.filter((participant) => {
-      const participantName = normalizeSearchText(participant.full_name)
+      const participantName = normalizeSearchText(participant.full_name);
       const entryNames = participant.entries
         .map((entry) => normalizeSearchText(entry.name))
-        .join(' ')
+        .join(" ");
 
-      return participantName.includes(query) || entryNames.includes(query)
-    })
-  }, [participants, participantSearch])
+      return participantName.includes(query) || entryNames.includes(query);
+    });
+  }, [participants, participantSearch]);
 
   const selectedParticipant =
-    participants.find((participant) => participant.user_id === selectedUserId) ?? null
+    participants.find(
+      (participant) => participant.user_id === selectedUserId,
+    ) ?? null;
 
   const selectedParticipantInFiltered =
     selectedParticipant &&
-    filteredParticipants.some((participant) => participant.user_id === selectedParticipant.user_id)
+    filteredParticipants.some(
+      (participant) => participant.user_id === selectedParticipant.user_id,
+    )
       ? selectedParticipant
-      : null
+      : null;
 
   const desktopSelectedParticipant =
-    selectedParticipantInFiltered ?? filteredParticipants[0] ?? null
+    selectedParticipantInFiltered ?? filteredParticipants[0] ?? null;
 
   if (!canView) {
     return (
@@ -3708,7 +4002,7 @@ function PublicPicksByParticipantScreen({
           <PublicRevealLockedCard />
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -3768,8 +4062,8 @@ function PublicPicksByParticipantScreen({
                 type="text"
                 value={participantSearch}
                 onChange={(e) => {
-                  setParticipantSearch(e.target.value)
-                  setSelectedUserId(null)
+                  setParticipantSearch(e.target.value);
+                  setSelectedUserId(null);
                 }}
                 placeholder="Buscar por nombre, apellido o nombre de quiniela..."
                 className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/35 focus:border-yellow-400/50 focus:bg-black/55"
@@ -3779,8 +4073,8 @@ function PublicPicksByParticipantScreen({
                 <button
                   type="button"
                   onClick={() => {
-                    setParticipantSearch('')
-                    setSelectedUserId(null)
+                    setParticipantSearch("");
+                    setSelectedUserId(null);
                   }}
                   className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
                 >
@@ -3790,7 +4084,8 @@ function PublicPicksByParticipantScreen({
             </div>
 
             <p className="mt-3 text-xs font-semibold text-white/55">
-              {filteredParticipants.length} de {participants.length} participante{participants.length === 1 ? '' : 's'}
+              {filteredParticipants.length} de {participants.length}{" "}
+              participante{participants.length === 1 ? "" : "s"}
             </p>
           </section>
         )}
@@ -3805,373 +4100,419 @@ function PublicPicksByParticipantScreen({
               Aún no hay quinielas registradas
             </p>
             <p className="mt-2 text-sm leading-6 text-white/65">
-              Cuando existan quinielas en la tabla <code>entries</code>, aparecerán aquí agrupadas por participante.
+              Cuando existan quinielas en la tabla <code>entries</code>,
+              aparecerán aquí agrupadas por participante.
             </p>
           </div>
         ) : (
           <>
-          {filteredParticipants.length === 0 && (
-            <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
-              <p className="text-lg font-bold text-red-100">
-                No encontramos participantes con esa búsqueda.
-              </p>
-              <p className="mt-2 text-sm leading-6 text-red-100/75">
-                Intenta buscar por nombre, apellido o nombre de quiniela.
-              </p>
-            </div>
-          )}
-
-          {filteredParticipants.length > 0 && (
-          <section className="mt-8 lg:hidden">
-            {!selectedParticipant ? (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-lg font-bold text-yellow-400">
-                    Participantes
-                  </h2>
-
-                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                    {filteredParticipants.length}
-                  </span>
-                </div>
-
-                <div className="mt-5 space-y-3">
-                  {filteredParticipants.map((participant) => {
-                    const isMe = participant.email && participant.email === user?.email
-
-                    return (
-                      <button
-                        key={participant.user_id}
-                        type="button"
-                        onClick={() => setSelectedUserId(participant.user_id)}
-                        className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-4 text-left transition hover:border-yellow-400/20 hover:bg-white/[0.06] active:scale-[0.99]"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-white">
-                              {participant.full_name}
-                            </p>
-                          </div>
-
-                          {isMe && (
-                            <span className="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                              Tú
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-yellow-300">
-                          {participant.entries.length} quiniela{participant.entries.length === 1 ? '' : 's'}
-                        </p>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => setSelectedUserId(null)}
-                  className="mb-5 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
-                >
-                  ← Volver a participantes
-                </button>
-
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-yellow-400">
-                      Quinielas del participante
-                    </h2>
-
-                    <p className="mt-1 truncate text-sm text-white/70">
-                      {selectedParticipant.full_name}
-                    </p>
-                  </div>
-
-                  <span className="shrink-0 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                    {selectedParticipant.entries.length}
-                  </span>
-                </div>
-
-                <div className="mt-6 grid gap-4">
-                  {selectedParticipant.entries.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      onClick={() => onOpenEntry(entry.id)}
-                      className="rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-white/8 to-white/[0.03] p-5 text-left shadow-lg transition hover:border-yellow-400/40 hover:bg-yellow-400/10 active:scale-[0.99]"
-                    >
-                      <p className="text-lg font-bold text-white">{entry.name}</p>
-                      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-300">
-                        Ver quiniela
-                      </p>
-                    </button>
-                  ))}
-                </div>
+            {filteredParticipants.length === 0 && (
+              <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+                <p className="text-lg font-bold text-red-100">
+                  No encontramos participantes con esa búsqueda.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-red-100/75">
+                  Intenta buscar por nombre, apellido o nombre de quiniela.
+                </p>
               </div>
             )}
-          </section>
-          )}
 
-          {filteredParticipants.length > 0 && (
-          <section className="mt-8 hidden gap-6 lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
-            <aside className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold text-yellow-400">
-                  Participantes
-                </h2>
+            {filteredParticipants.length > 0 && (
+              <section className="mt-8 lg:hidden">
+                {!selectedParticipant ? (
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-lg font-bold text-yellow-400">
+                        Participantes
+                      </h2>
 
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                  {filteredParticipants.length}
-                </span>
-              </div>
+                      <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                        {filteredParticipants.length}
+                      </span>
+                    </div>
 
-              <div className="mt-5 space-y-3">
-                {filteredParticipants.map((participant) => {
-                  const isSelected = participant.user_id === (selectedUserId ?? desktopSelectedParticipant?.user_id)
-                  const isMe = participant.email && participant.email === user?.email
+                    <div className="mt-5 space-y-3">
+                      {filteredParticipants.map((participant) => {
+                        const isMe =
+                          participant.email &&
+                          participant.email === user?.email;
 
-                  return (
+                        return (
+                          <button
+                            key={participant.user_id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedUserId(participant.user_id)
+                            }
+                            className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-4 text-left transition hover:border-yellow-400/20 hover:bg-white/[0.06] active:scale-[0.99]"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-white">
+                                  {participant.full_name}
+                                </p>
+                              </div>
+
+                              {isMe && (
+                                <span className="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                  Tú
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-3 text-xs uppercase tracking-[0.18em] text-yellow-300">
+                              {participant.entries.length} quiniela
+                              {participant.entries.length === 1 ? "" : "s"}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
                     <button
-                      key={participant.user_id}
                       type="button"
-                      onClick={() => setSelectedUserId(participant.user_id)}
-                      className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                        isSelected
-                          ? 'border-yellow-400/40 bg-yellow-400/10 shadow-[0_0_30px_rgba(250,204,21,0.10)]'
-                          : 'border-white/10 bg-black/30 hover:border-yellow-400/20 hover:bg-white/[0.06]'
-                      }`}
+                      onClick={() => setSelectedUserId(null)}
+                      className="mb-5 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98]"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            {participant.full_name}
-                          </p>
+                      ← Volver a participantes
+                    </button>
 
-                        </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="text-lg font-bold text-yellow-400">
+                          Quinielas del participante
+                        </h2>
 
-                        {isMe && (
-                          <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                            Tú
-                          </span>
-                        )}
+                        <p className="mt-1 truncate text-sm text-white/70">
+                          {selectedParticipant.full_name}
+                        </p>
                       </div>
 
-                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-yellow-300">
-                        {participant.entries.length} quiniela{participant.entries.length === 1 ? '' : 's'}
+                      <span className="shrink-0 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                        {selectedParticipant.entries.length}
+                      </span>
+                    </div>
+
+                    <div className="mt-6 grid gap-4">
+                      {selectedParticipant.entries.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          onClick={() => onOpenEntry(entry.id)}
+                          className="rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-white/8 to-white/[0.03] p-5 text-left shadow-lg transition hover:border-yellow-400/40 hover:bg-yellow-400/10 active:scale-[0.99]"
+                        >
+                          <p className="text-lg font-bold text-white">
+                            {entry.name}
+                          </p>
+                          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-300">
+                            Ver quiniela
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {filteredParticipants.length > 0 && (
+              <section className="mt-8 hidden gap-6 lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
+                <aside className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-lg font-bold text-yellow-400">
+                      Participantes
+                    </h2>
+
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                      {filteredParticipants.length}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    {filteredParticipants.map((participant) => {
+                      const isSelected =
+                        participant.user_id ===
+                        (selectedUserId ?? desktopSelectedParticipant?.user_id);
+                      const isMe =
+                        participant.email && participant.email === user?.email;
+
+                      return (
+                        <button
+                          key={participant.user_id}
+                          type="button"
+                          onClick={() => setSelectedUserId(participant.user_id)}
+                          className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
+                            isSelected
+                              ? "border-yellow-400/40 bg-yellow-400/10 shadow-[0_0_30px_rgba(250,204,21,0.10)]"
+                              : "border-white/10 bg-black/30 hover:border-yellow-400/20 hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-white">
+                                {participant.full_name}
+                              </p>
+                            </div>
+
+                            {isMe && (
+                              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                Tú
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-3 text-xs uppercase tracking-[0.18em] text-yellow-300">
+                            {participant.entries.length} quiniela
+                            {participant.entries.length === 1 ? "" : "s"}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-bold text-yellow-400">
+                        Quinielas del participante
+                      </h2>
+
+                      <p className="mt-1 text-sm text-white/55">
+                        {desktopSelectedParticipant?.full_name ||
+                          "Participante"}
                       </p>
-                    </button>
-                  )
-                })}
-              </div>
-            </aside>
+                    </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold text-yellow-400">
-                    Quinielas del participante
-                  </h2>
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                      {desktopSelectedParticipant?.entries.length ?? 0}{" "}
+                      registros
+                    </span>
+                  </div>
 
-                  <p className="mt-1 text-sm text-white/55">
-                    {desktopSelectedParticipant?.full_name || 'Participante'}
-                  </p>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    {desktopSelectedParticipant?.entries.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        onClick={() => onOpenEntry(entry.id)}
+                        className="rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-white/8 to-white/[0.03] p-5 text-left shadow-lg transition hover:border-yellow-400/40 hover:bg-yellow-400/10 hover:shadow-[0_0_30px_rgba(250,204,21,0.15)]"
+                      >
+                        <p className="text-lg font-bold text-white">
+                          {entry.name}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-white/60">
+                          En la siguiente fase, esta tarjeta abrirá el detalle
+                          completo de la quiniela.
+                        </p>
+                        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-300">
+                          Ver detalle
+                        </p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                  {desktopSelectedParticipant?.entries.length ?? 0} registros
-                </span>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {desktopSelectedParticipant?.entries.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => onOpenEntry(entry.id)}
-                    className="rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-white/8 to-white/[0.03] p-5 text-left shadow-lg transition hover:border-yellow-400/40 hover:bg-yellow-400/10 hover:shadow-[0_0_30px_rgba(250,204,21,0.15)]"
-                  >
-                    <p className="text-lg font-bold text-white">{entry.name}</p>
-                    <p className="mt-2 text-sm leading-6 text-white/60">
-                      En la siguiente fase, esta tarjeta abrirá el detalle completo de la quiniela.
-                    </p>
-                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-300">
-                      Ver detalle
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-          )}
+              </section>
+            )}
           </>
         )}
       </div>
-    
-<WhatsAppSupportButton user={user} />
 
-</main>
-  )
+      <WhatsAppSupportButton user={user} />
+    </main>
+  );
 }
 function EntryDetailScreen({
   entryId,
   onBack,
+  backLabel = "Volver",
 }: {
-  entryId: string
-  onBack: () => void
+  entryId: string;
+  onBack: () => void;
+  backLabel?: string;
 }) {
-  const [entryInfo, setEntryInfo] = useState<EntryDetailInfo | null>(null)
-  const [predictionsMap, setPredictionsMap] = useState<Record<string, Prediction>>({})
-  const [officialResults, setOfficialResults] = useState<Record<string, OfficialResult>>({})
-  const [matchStates, setMatchStates] = useState<Record<string, MatchState>>({})
-  const [loading, setLoading] = useState(true)
+  const [entryInfo, setEntryInfo] = useState<EntryDetailInfo | null>(null);
+  const [predictionsMap, setPredictionsMap] = useState<
+    Record<string, Prediction>
+  >({});
+  const [officialResults, setOfficialResults] = useState<
+    Record<string, OfficialResult>
+  >({});
+  const [matchStates, setMatchStates] = useState<Record<string, MatchState>>(
+    {},
+  );
+  const [loading, setLoading] = useState(true);
 
-  useScrollToPageTop([entryId])
+  useScrollToPageTop([entryId]);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const loadAll = async () => {
-      setLoading(true)
+      setLoading(true);
 
-      const token = await getSafeAccessToken()
+      const token = await getSafeAccessToken();
 
-      const [detailRes, { data: matchesData, error: matchesError }] = await Promise.all([
-        fetch(`/api/public/entry-detail?entryId=${encodeURIComponent(entryId)}`, {
-          headers: token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {},
-        }),
-        supabase
-          .from('matches')
-          .select('id, home_score, away_score, is_open, is_finished')
-          .in('id', MATCHES.map((match) => match.id)),
-      ])
+      const [detailRes, { data: matchesData, error: matchesError }] =
+        await Promise.all([
+          fetch(
+            `/api/public/entry-detail?entryId=${encodeURIComponent(entryId)}`,
+            {
+              headers: token
+                ? {
+                    Authorization: `Bearer ${token}`,
+                  }
+                : {},
+            },
+          ),
+          supabase
+            .from("matches")
+            .select("id, home_score, away_score, is_open, is_finished")
+            .in(
+              "id",
+              MATCHES.map((match) => match.id),
+            ),
+        ]);
 
-      if (!mounted) return
+      if (!mounted) return;
 
       if (!detailRes.ok) {
-        const payload = await detailRes.json().catch(() => null)
-        console.error('Error cargando detalle de quiniela:', payload?.error || detailRes.statusText)
-        setEntryInfo(null)
-        setPredictionsMap({})
+        const payload = await detailRes.json().catch(() => null);
+        console.error(
+          "Error cargando detalle de quiniela:",
+          payload?.error || detailRes.statusText,
+        );
+        setEntryInfo(null);
+        setPredictionsMap({});
       } else {
-        const detailData = await detailRes.json()
-        const entryData = detailData?.entry ?? null
-        const picksData = detailData?.predictions ?? []
+        const detailData = await detailRes.json();
+        const entryData = detailData?.entry ?? null;
+        const picksData = detailData?.predictions ?? [];
 
-        setEntryInfo((entryData as EntryDetailInfo) ?? null)
+        setEntryInfo((entryData as EntryDetailInfo) ?? null);
 
-        const formatted: Record<string, Prediction> = {}
+        const formatted: Record<string, Prediction> = {};
 
-        ;((picksData ?? []) as EntryPredictionRow[]).forEach((row) => {
+        ((picksData ?? []) as EntryPredictionRow[]).forEach((row) => {
           formatted[row.match_id] = {
             homeScore:
-              row.home_score_predicted == null ? '' : String(row.home_score_predicted),
+              row.home_score_predicted == null
+                ? ""
+                : String(row.home_score_predicted),
             awayScore:
-              row.away_score_predicted == null ? '' : String(row.away_score_predicted),
-          }
-        })
+              row.away_score_predicted == null
+                ? ""
+                : String(row.away_score_predicted),
+          };
+        });
 
-        setPredictionsMap(formatted)
+        setPredictionsMap(formatted);
       }
 
       if (matchesError) {
-        console.error('Error cargando metadata de matches en detalle:', matchesError.message)
-        setOfficialResults({})
-        setMatchStates({})
+        console.error(
+          "Error cargando metadata de matches en detalle:",
+          matchesError.message,
+        );
+        setOfficialResults({});
+        setMatchStates({});
       } else {
-        const officialMap: Record<string, OfficialResult> = {}
-        const stateMap: Record<string, MatchState> = {}
+        const officialMap: Record<string, OfficialResult> = {};
+        const stateMap: Record<string, MatchState> = {};
 
-        ;(matchesData ?? []).forEach((row: any) => {
+        (matchesData ?? []).forEach((row: any) => {
           officialMap[row.id] = {
-            homeScore: row.home_score == null ? '' : String(row.home_score),
-            awayScore: row.away_score == null ? '' : String(row.away_score),
-          }
+            homeScore: row.home_score == null ? "" : String(row.home_score),
+            awayScore: row.away_score == null ? "" : String(row.away_score),
+          };
 
           stateMap[row.id] = {
             isOpen: row.is_open ?? true,
             isFinished: row.is_finished ?? false,
-          }
-        })
+          };
+        });
 
-        setOfficialResults(officialMap)
-        setMatchStates(stateMap)
+        setOfficialResults(officialMap);
+        setMatchStates(stateMap);
       }
 
-      setLoading(false)
-    }
+      setLoading(false);
+    };
 
-    loadAll()
+    loadAll();
 
     const channel = supabase
       .channel(`entry-detail-${entryId}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'predictions' },
-        loadAll
+        "postgres_changes",
+        { event: "*", schema: "public", table: "predictions" },
+        loadAll,
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'matches' },
-        loadAll
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        loadAll,
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'entries' },
-        loadAll
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entries" },
+        loadAll,
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      mounted = false
-      supabase.removeChannel(channel)
-    }
-  }, [entryId])
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [entryId]);
 
   const groupedMatches = useMemo(() => {
     const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
-      if (!acc[match.group]) acc[match.group] = []
-      acc[match.group].push(match)
-      return acc
-    }, {})
+      if (!acc[match.group]) acc[match.group] = [];
+      acc[match.group].push(match);
+      return acc;
+    }, {});
 
-return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
-  }, [])
+    return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)));
+  }, []);
 
   const summary = useMemo(() => {
-    let completed = 0
-    let exact = 0
-    let outcome = 0
-    let totalPoints = 0
+    let completed = 0;
+    let exact = 0;
+    let outcome = 0;
+    let totalPoints = 0;
 
     MATCHES.forEach((match) => {
-      const prediction = predictionsMap[match.id] ?? { homeScore: '', awayScore: '' }
-      const official = officialResults[match.id] ?? { homeScore: '', awayScore: '' }
+      const prediction = predictionsMap[match.id] ?? {
+        homeScore: "",
+        awayScore: "",
+      };
+      const official = officialResults[match.id] ?? {
+        homeScore: "",
+        awayScore: "",
+      };
 
-      if (prediction.homeScore !== '' && prediction.awayScore !== '') {
-        completed += 1
+      if (prediction.homeScore !== "" && prediction.awayScore !== "") {
+        completed += 1;
       }
 
-      const status = getPickStatus(prediction, official)
+      const status = getPickStatus(prediction, official);
 
-      if (!status) return
+      if (!status) return;
 
-      if (status.label.includes('Exacto')) {
-        exact += 1
-        totalPoints += 3
-        return
+      if (status.label.includes("Exacto")) {
+        exact += 1;
+        totalPoints += 3;
+        return;
       }
 
-      if (status.label.includes('Acierto')) {
-        outcome += 1
-        totalPoints += 1
+      if (status.label.includes("Acierto")) {
+        outcome += 1;
+        totalPoints += 1;
       }
-    })
+    });
 
     return {
       completed,
@@ -4179,8 +4520,8 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
       exact,
       outcome,
       totalPoints,
-    }
-  }, [officialResults, predictionsMap])
+    };
+  }, [officialResults, predictionsMap]);
 
   if (loading) {
     return (
@@ -4190,7 +4531,7 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
             onClick={onBack}
             className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
           >
-            ← Volver
+            ← {backLabel}
           </button>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white/70">
@@ -4198,7 +4539,7 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
           </div>
         </div>
       </main>
-    )
+    );
   }
 
   if (!entryInfo) {
@@ -4209,7 +4550,7 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
             onClick={onBack}
             className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
           >
-            ← Volver
+            ← {backLabel}
           </button>
 
           <div className="rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
@@ -4222,7 +4563,7 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
           </div>
         </div>
       </main>
-    )
+    );
   }
 
   return (
@@ -4232,7 +4573,7 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
           onClick={onBack}
           className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
         >
-          ← Volver
+          ← {backLabel}
         </button>
 
         <section className="relative overflow-hidden rounded-3xl border border-yellow-500/40 bg-black/95 p-5 shadow-[0_0_30px_rgba(234,179,8,0.15)] sm:p-6 md:p-10">
@@ -4240,61 +4581,63 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
           <div className="absolute left-0 top-0 h-[2px] w-40 bg-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.8)]" />
 
           <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-end">
-  <div className="max-w-4xl">
-    <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl xl:text-7xl">
-  <span className="text-yellow-400/80 font-semibold">
-    Quiniela de:
-  </span>{' '}
-  {entryInfo.profiles?.full_name || 'Participante'}
-</h1>
+            <div className="max-w-4xl">
+              <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl xl:text-7xl">
+                <span className="text-yellow-400/80 font-semibold">
+                  Quiniela de:
+                </span>{" "}
+                {entryInfo.profiles?.full_name || "Participante"}
+              </h1>
 
-    <p className="mt-4 inline-flex rounded-full border border-yellow-400/20 bg-yellow-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-yellow-300">
-      {entryInfo.name}
-    </p>
+              <p className="mt-4 inline-flex rounded-full border border-yellow-400/20 bg-yellow-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-yellow-300">
+                {entryInfo.name}
+              </p>
 
-    <p className="mt-5 max-w-2xl text-sm leading-7 text-white/60 md:text-base">
-      Consulta todos los picks capturados de esta quiniela, su estatus frente al resultado oficial y el rendimiento acumulado del participante.
-    </p>
-  </div>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/60 md:text-base">
+                Consulta todos los picks capturados de esta quiniela, su estatus
+                frente al resultado oficial y el rendimiento acumulado del
+                participante.
+              </p>
+            </div>
 
-  <div className="grid grid-cols-2 gap-3">
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-        Puntos Totales
-      </p>
-      <p className="mt-2 text-2xl font-bold text-white">
-        {summary.totalPoints}
-      </p>
-    </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                  Puntos Totales
+                </p>
+                <p className="mt-2 text-2xl font-bold text-white">
+                  {summary.totalPoints}
+                </p>
+              </div>
 
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-        Capturados
-      </p>
-      <p className="mt-2 text-2xl font-bold text-white">
-        {summary.completed}/{MATCHES.length}
-      </p>
-    </div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                  Capturados
+                </p>
+                <p className="mt-2 text-2xl font-bold text-white">
+                  {summary.completed}/{MATCHES.length}
+                </p>
+              </div>
 
-    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-emerald-200/70">
-        Marcadores Exactos
-      </p>
-      <p className="mt-2 text-2xl font-bold text-emerald-100">
-        {summary.exact}
-      </p>
-    </div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-emerald-200/70">
+                  Marcadores Exactos
+                </p>
+                <p className="mt-2 text-2xl font-bold text-emerald-100">
+                  {summary.exact}
+                </p>
+              </div>
 
-    <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-amber-200/70">
-        Aciertos
-      </p>
-      <p className="mt-2 text-2xl font-bold text-amber-100">
-        {summary.outcome}
-      </p>
-    </div>
-  </div>
-</div>
+              <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-amber-200/70">
+                  Aciertos
+                </p>
+                <p className="mt-2 text-2xl font-bold text-amber-100">
+                  {summary.outcome}
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <div className="mt-8 space-y-8">
@@ -4313,46 +4656,46 @@ return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)))
               <div className="space-y-4">
                 {matches.map((match) => {
                   const prediction = predictionsMap[match.id] ?? {
-                    homeScore: '',
-                    awayScore: '',
-                  }
+                    homeScore: "",
+                    awayScore: "",
+                  };
 
                   const official = officialResults[match.id] ?? {
-                    homeScore: '',
-                    awayScore: '',
-                  }
+                    homeScore: "",
+                    awayScore: "",
+                  };
 
                   const state = matchStates[match.id] ?? {
                     isOpen: true,
                     isFinished: false,
-                  }
+                  };
 
-                  const status = getPickStatus(prediction, official)
+                  const status = getPickStatus(prediction, official);
                   const hasPrediction =
-                    prediction.homeScore !== '' && prediction.awayScore !== ''
+                    prediction.homeScore !== "" && prediction.awayScore !== "";
                   const hasOfficial =
-                    official.homeScore !== '' && official.awayScore !== ''
-                    const badgeTone = !hasPrediction
-  ? 'border-red-400/20 bg-red-400/10 text-red-200'
-  : !hasOfficial
-    ? 'border-white/10 bg-white/10 text-white/70'
-    : status?.label.includes('Exacto')
-      ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100'
-      : status?.label.includes('Acierto')
-        ? 'border-amber-400/20 bg-amber-400/10 text-amber-100'
-        : 'border-red-400/20 bg-red-400/10 text-red-200'
+                    official.homeScore !== "" && official.awayScore !== "";
+                  const badgeTone = !hasPrediction
+                    ? "border-red-400/20 bg-red-400/10 text-red-200"
+                    : !hasOfficial
+                      ? "border-white/10 bg-white/10 text-white/70"
+                      : status?.label.includes("Exacto")
+                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                        : status?.label.includes("Acierto")
+                          ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                          : "border-red-400/20 bg-red-400/10 text-red-200";
 
-const badgeLabel = !hasPrediction
-  ? 'Sin pick'
-  : !hasOfficial
-    ? 'Pendiente'
-    : status?.label || 'Fallaste'
+                  const badgeLabel = !hasPrediction
+                    ? "Sin pick"
+                    : !hasOfficial
+                      ? "Pendiente"
+                      : status?.label || "Fallaste";
 
-const badgeDetail = !hasPrediction
-  ? 'No capturado'
-  : !hasOfficial
-    ? 'Esperando resultado oficial'
-    : status?.detail || 'Sin puntos'
+                  const badgeDetail = !hasPrediction
+                    ? "No capturado"
+                    : !hasOfficial
+                      ? "Esperando resultado oficial"
+                      : status?.detail || "Sin puntos";
 
                   return (
                     <div
@@ -4416,1299 +4759,1373 @@ const badgeDetail = !hasPrediction
                           </div>
 
                           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-  <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
-    <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
-      Pick de la quiniela
-    </p>
-    <p className="mt-2 text-lg font-bold text-white">
-      {hasPrediction ? `${prediction.homeScore} - ${prediction.awayScore}` : '—'}
-    </p>
-  </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+                              <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
+                                Pick de la quiniela
+                              </p>
+                              <p className="mt-2 text-lg font-bold text-white">
+                                {hasPrediction
+                                  ? `${prediction.homeScore} - ${prediction.awayScore}`
+                                  : "—"}
+                              </p>
+                            </div>
 
-  <div
-    className={`rounded-2xl border px-4 py-3 ${
-      hasOfficial
-        ? 'border-emerald-400/20 bg-emerald-400/10'
-        : 'border-white/10 bg-black/25'
-    }`}
-  >
-    <p
-      className={`text-[11px] uppercase tracking-[0.18em] ${
-        hasOfficial ? 'text-emerald-200/70' : 'text-white/45'
-      }`}
-    >
-      Resultado oficial
-    </p>
+                            <div
+                              className={`rounded-2xl border px-4 py-3 ${
+                                hasOfficial
+                                  ? "border-emerald-400/20 bg-emerald-400/10"
+                                  : "border-white/10 bg-black/25"
+                              }`}
+                            >
+                              <p
+                                className={`text-[11px] uppercase tracking-[0.18em] ${
+                                  hasOfficial
+                                    ? "text-emerald-200/70"
+                                    : "text-white/45"
+                                }`}
+                              >
+                                Resultado oficial
+                              </p>
 
-    <p
-      className={`mt-2 text-lg font-bold ${
-        hasOfficial ? 'text-emerald-100' : 'text-white/55'
-      }`}
-    >
-      {hasOfficial ? `${official.homeScore} - ${official.awayScore}` : 'Pendiente'}
-    </p>
-  </div>
+                              <p
+                                className={`mt-2 text-lg font-bold ${
+                                  hasOfficial
+                                    ? "text-emerald-100"
+                                    : "text-white/55"
+                                }`}
+                              >
+                                {hasOfficial
+                                  ? `${official.homeScore} - ${official.awayScore}`
+                                  : "Pendiente"}
+                              </p>
+                            </div>
 
-  <div className={`rounded-2xl border px-4 py-3 ${badgeTone}`}>
-    <p className="text-[11px] uppercase tracking-[0.18em] opacity-80">
-      Estado
-    </p>
-    <p className="mt-2 text-lg font-bold">
-      {badgeLabel}
-    </p>
-    <p className="mt-1 text-sm opacity-90">
-      {badgeDetail}
-    </p>
-  </div>
-</div>
+                            <div
+                              className={`rounded-2xl border px-4 py-3 ${badgeTone}`}
+                            >
+                              <p className="text-[11px] uppercase tracking-[0.18em] opacity-80">
+                                Estado
+                              </p>
+                              <p className="mt-2 text-lg font-bold">
+                                {badgeLabel}
+                              </p>
+                              <p className="mt-1 text-sm opacity-90">
+                                {badgeDetail}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-  <p className="mb-3 text-center text-xs uppercase tracking-[0.2em] text-white/45">
-    Pronóstico de esta quiniela
-  </p>
+                          <p className="mb-3 text-center text-xs uppercase tracking-[0.2em] text-white/45">
+                            Pronóstico de esta quiniela
+                          </p>
 
-  <div className="flex items-center justify-center gap-3">
-    <div className="flex h-12 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-center text-lg font-bold text-white sm:h-14 sm:w-16 sm:text-xl">
-      {prediction.homeScore || '—'}
-    </div>
+                          <div className="flex items-center justify-center gap-3">
+                            <div className="flex h-12 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-center text-lg font-bold text-white sm:h-14 sm:w-16 sm:text-xl">
+                              {prediction.homeScore || "—"}
+                            </div>
 
-    <span className="text-lg font-semibold text-white/50">-</span>
+                            <span className="text-lg font-semibold text-white/50">
+                              -
+                            </span>
 
-    <div className="flex h-12 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-center text-lg font-bold text-white sm:h-14 sm:w-16 sm:text-xl">
-      {prediction.awayScore || '—'}
-    </div>
-  </div>
+                            <div className="flex h-12 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-center text-lg font-bold text-white sm:h-14 sm:w-16 sm:text-xl">
+                              {prediction.awayScore || "—"}
+                            </div>
+                          </div>
 
-  <div className={`mt-4 rounded-2xl border px-4 py-3 text-center ${badgeTone}`}>
-    <p className="text-xs uppercase tracking-[0.18em] opacity-80">
-      {badgeLabel}
-    </p>
-    <p className="mt-1 text-sm font-semibold">
-      {badgeDetail}
-    </p>
-  </div>
-</div>
+                          <div
+                            className={`mt-4 rounded-2xl border px-4 py-3 text-center ${badgeTone}`}
+                          >
+                            <p className="text-xs uppercase tracking-[0.18em] opacity-80">
+                              {badgeLabel}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold">
+                              {badgeDetail}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </section>
           ))}
         </div>
       </div>
-    
-
-</main>
-  )
+    </main>
+  );
 }
 
 export default function Home() {
-  const router = useRouter()
-  const [user, setUser] = useState<UserState>(null)
-  const [showTutorialModal, setShowTutorialModal] = useState(false)
-  const [showTutorialVideo, setShowTutorialVideo] = useState(false)
-  const [landingEmail, setLandingEmail] = useState('')
-const [landingPassword, setLandingPassword] = useState('')
-const [landingFirstName, setLandingFirstName] = useState('')
-const [landingLastName, setLandingLastName] = useState('')
-const [landingPhone, setLandingPhone] = useState('')
-const [landingLoading, setLandingLoading] = useState(false)
-const [landingMessage, setLandingMessage] = useState('')
-const [landingError, setLandingError] = useState('')
-const [landingIsRegister, setLandingIsRegister] = useState(false)
-  const [view, setView] = useState<ViewMode>('dashboard')
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null)
-  useScrollToPageTop([view, selectedEntryId])
-  const [predictions, setPredictions] = useState<Record<string, Prediction>>({})
-  const [activeEntryId, setActiveEntryId] = useState<string | null>(null)
-  const [entries, setEntries] = useState<EntryRow[]>([])
-  const [participantProfile, setParticipantProfile] = useState<ParticipantProfileRow | null>(null)
-const [participantProfileLoading, setParticipantProfileLoading] = useState(false)
-const [isEditingParticipantProfile, setIsEditingParticipantProfile] = useState(false)
-const [participantFirstName, setParticipantFirstName] = useState('')
-const [participantLastName, setParticipantLastName] = useState('')
-const [participantPhone, setParticipantPhone] = useState('')
-const participantEditDeadline = new Date('2026-06-11T10:00:00-06:00')
-const isParticipantEditLocked = new Date() >= participantEditDeadline
-const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
-const [personalRank, setPersonalRank] = useState<PersonalRankInfo>({
-  position: null,
-  total_points: 0,
-  exact_hits: 0,
-  outcome_hits: 0,
-})
-const [personalRankLoading, setPersonalRankLoading] = useState(false)
+  const router = useRouter();
+  const [user, setUser] = useState<UserState>(null);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
+  const [showTutorialVideo, setShowTutorialVideo] = useState(false);
+  const [landingEmail, setLandingEmail] = useState("");
+  const [landingPassword, setLandingPassword] = useState("");
+  const [landingFirstName, setLandingFirstName] = useState("");
+  const [landingLastName, setLandingLastName] = useState("");
+  const [landingPhone, setLandingPhone] = useState("");
+  const [landingLoading, setLandingLoading] = useState(false);
+  const [landingMessage, setLandingMessage] = useState("");
+  const [landingError, setLandingError] = useState("");
+  const [landingIsRegister, setLandingIsRegister] = useState(false);
+  const [view, setView] = useState<ViewMode>("dashboard");
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [entryDetailReturnView, setEntryDetailReturnView] = useState<
+    "leaderboard" | "public-by-participant"
+  >("public-by-participant");
+  useScrollToPageTop([view, selectedEntryId]);
+  const [predictions, setPredictions] = useState<Record<string, Prediction>>(
+    {},
+  );
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [participantProfile, setParticipantProfile] =
+    useState<ParticipantProfileRow | null>(null);
+  const [participantProfileLoading, setParticipantProfileLoading] =
+    useState(false);
+  const [isEditingParticipantProfile, setIsEditingParticipantProfile] =
+    useState(false);
+  const [participantFirstName, setParticipantFirstName] = useState("");
+  const [participantLastName, setParticipantLastName] = useState("");
+  const [participantPhone, setParticipantPhone] = useState("");
+  const participantEditDeadline = new Date("2026-06-11T10:00:00-06:00");
+  const isParticipantEditLocked = new Date() >= participantEditDeadline;
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
+  const [personalRank, setPersonalRank] = useState<PersonalRankInfo>({
+    position: null,
+    total_points: 0,
+    exact_hits: 0,
+    outcome_hits: 0,
+  });
+  const [personalRankLoading, setPersonalRankLoading] = useState(false);
 
-const openView = (nextView: ViewMode) => {
-  scrollToPageTop()
-  setView(nextView)
-}
+  const openView = (nextView: ViewMode) => {
+    scrollToPageTop();
+    setView(nextView);
+  };
 
-const openTutorialVideo = () => {
-  setShowTutorialVideo(true)
-}
+  const openTutorialVideo = () => {
+    setShowTutorialVideo(true);
+  };
 
-const dismissTutorialForCurrentUser = () => {
-  if (!user?.id || typeof window === 'undefined') {
-    setShowTutorialModal(false)
-    return
+  const dismissTutorialForCurrentUser = () => {
+    if (!user?.id || typeof window === "undefined") {
+      setShowTutorialModal(false);
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(`quiniela-tutorial-seen-${user.id}`, "true");
+    } catch {
+      // noop
+    }
+
+    setShowTutorialModal(false);
+  };
+
+  async function upsertLandingProfile(userId: string, userEmail: string) {
+    const cleanFirstName = landingFirstName.trim();
+    const cleanLastName = landingLastName.trim();
+    const cleanPhone = landingPhone.trim();
+
+    const { data: existingProfile, error: readError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (readError) throw readError;
+
+    if (existingProfile) {
+      return;
+    }
+
+    const resolvedFullName =
+      `${cleanFirstName} ${cleanLastName}`.trim() ||
+      userEmail.split("@")[0].replace(/[._-]+/g, " ");
+
+    const { error } = await supabase.from("profiles").insert({
+      id: userId,
+      email: userEmail,
+      full_name: resolvedFullName,
+      first_name: cleanFirstName || null,
+      last_name: cleanLastName || null,
+      phone: cleanPhone || null,
+      role: "player",
+    });
+
+    if (error) throw error;
   }
 
-  try {
-    window.localStorage.setItem(`quiniela-tutorial-seen-${user.id}`, 'true')
-  } catch {
-    // noop
-  }
+  async function handleLandingAuth(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
 
-  setShowTutorialModal(false)
-}
+    setLandingLoading(true);
+    setLandingMessage("");
+    setLandingError("");
 
-async function upsertLandingProfile(userId: string, userEmail: string) {
-  const cleanFirstName = landingFirstName.trim()
-  const cleanLastName = landingLastName.trim()
-  const cleanPhone = landingPhone.trim()
+    try {
+      if (landingIsRegister) {
+        if (
+          !landingFirstName.trim() ||
+          !landingLastName.trim() ||
+          !landingPhone.trim()
+        ) {
+          setLandingError("Por favor ingresa nombres, apellidos y teléfono.");
+          setLandingLoading(false);
+          return;
+        }
 
-  const { data: existingProfile, error: readError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle()
+        const { data, error } = await supabase.auth.signUp({
+          email: landingEmail,
+          password: landingPassword,
+        });
 
-  if (readError) throw readError
+        if (error) throw error;
 
-  if (existingProfile) {
-    return
-  }
+        if (data.user) {
+          await upsertLandingProfile(
+            data.user.id,
+            data.user.email || landingEmail,
+          );
+        }
 
-  const resolvedFullName =
-    `${cleanFirstName} ${cleanLastName}`.trim() ||
-    userEmail.split('@')[0].replace(/[._-]+/g, ' ')
-
-  const { error } = await supabase.from('profiles').insert({
-    id: userId,
-    email: userEmail,
-    full_name: resolvedFullName,
-    first_name: cleanFirstName || null,
-    last_name: cleanLastName || null,
-    phone: cleanPhone || null,
-    role: 'player',
-  })
-
-  if (error) throw error
-}
-
-async function handleLandingAuth(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault()
-
-  setLandingLoading(true)
-  setLandingMessage('')
-  setLandingError('')
-
-  try {
-    if (landingIsRegister) {
-      if (
-        !landingFirstName.trim() ||
-        !landingLastName.trim() ||
-        !landingPhone.trim()
-      ) {
-        setLandingError('Por favor ingresa nombres, apellidos y teléfono.')
-        setLandingLoading(false)
-        return
+        setLandingMessage("Cuenta creada. Ahora inicia sesión.");
+        setLandingIsRegister(false);
+        setLandingFirstName("");
+        setLandingLastName("");
+        setLandingPhone("");
+        setLandingPassword("");
+        return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: landingEmail,
         password: landingPassword,
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
-      if (data.user) {
-        await upsertLandingProfile(data.user.id, data.user.email || landingEmail)
-      }
-
-      setLandingMessage('Cuenta creada. Ahora inicia sesión.')
-      setLandingIsRegister(false)
-      setLandingFirstName('')
-      setLandingLastName('')
-      setLandingPhone('')
-      setLandingPassword('')
-      return
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: landingEmail,
-      password: landingPassword,
-    })
-
-    if (error) throw error
-
-    // IMPORTANTE:
-    // En login NO actualizamos profiles, porque eso puede pisar los datos personales
-    // que el participante ya guardó previamente.
-    router.refresh()
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Ocurrió un error'
-    setLandingError(msg)
-  } finally {
-    setLandingLoading(false)
-  }
-}
-
-
-async function handleForgotPassword() {
-  const email = landingEmail.trim()
-
-  setLandingMessage('')
-  setLandingError('')
-
-  if (!email) {
-    setLandingError('Escribe tu correo primero para recuperar tu contraseña.')
-    return
-  }
-
-  const redirectTo =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/update-password`
-      : 'https://www.superquiniela2026.com/update-password'
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
-  })
-
-  if (error) {
-    setLandingError(error.message)
-    return
-  }
-
-  setLandingMessage('Te mandamos un correo para restablecer tu contraseña.')
-}
-
-async function loadParticipantProfile(userId: string) {
-  setParticipantProfileLoading(true)
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (error) {
-    console.error('Error cargando perfil del participante:', error.message)
-    setParticipantProfile(null)
-    setParticipantProfileLoading(false)
-    return
-  }
-
- const profileData = (data as ParticipantProfileRow | null) ?? null
- const storedProfile = getStoredProfile(userId)
-
-if (!profileData && !storedProfile) {
-  setParticipantProfile(null)
-  setParticipantProfileLoading(false)
-  return
-}
-
-let resolvedProfile = {
-  ...(profileData ?? {}),
-  ...(storedProfile ?? {}),
-  id: userId,
-} as ParticipantProfileRow
-
-const emailUserName = getEmailUserName(resolvedProfile.email)
-const storedFullName = storedProfile?.full_name?.trim?.() || ''
-const dbFullName = profileData?.full_name?.trim?.() || ''
-
-if (
-  storedProfile &&
-  storedFullName &&
-  (!dbFullName || dbFullName.toLowerCase() === emailUserName)
-) {
-  const { data: repairedProfile, error: repairError } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        email: storedProfile.email ?? resolvedProfile.email ?? null,
-        full_name: storedProfile.full_name ?? null,
-        first_name: storedProfile.first_name ?? null,
-        last_name: storedProfile.last_name ?? null,
-        phone: storedProfile.phone ?? null,
-        role: storedProfile.role ?? resolvedProfile.role ?? 'player',
-      },
-      { onConflict: 'id' }
-    )
-    .select('*')
-    .single()
-
-  if (!repairError && repairedProfile) {
-    resolvedProfile = repairedProfile as ParticipantProfileRow
-  }
-}
-
-const fullNameParts = (resolvedProfile.full_name || '').trim().split(/\s+/).filter(Boolean)
-const inferredFirstName =
-  resolvedProfile.first_name ||
-  (fullNameParts.length > 2 ? fullNameParts.slice(0, -2).join(' ') : fullNameParts[0]) ||
-  ''
-const inferredLastName =
-  resolvedProfile.last_name ||
-  (fullNameParts.length > 2 ? fullNameParts.slice(-2).join(' ') : fullNameParts.slice(1).join(' ')) ||
-  ''
-
-const resolvedFullName = resolveProfileFullName(
-  {
-    ...resolvedProfile,
-    first_name: inferredFirstName,
-    last_name: inferredLastName,
-  },
-  resolvedProfile.email
-)
-
-setParticipantProfile({
-  ...resolvedProfile,
-  full_name: resolvedFullName,
-  first_name: inferredFirstName,
-  last_name: inferredLastName,
-  phone: resolvedProfile.phone || '',
-})
-
-setParticipantProfileLoading(false)
-}
-async function saveParticipantProfile() {
-  if (!user?.id) return
-
-  const cleanFirstName = participantFirstName.trim()
-  const cleanLastName = participantLastName.trim()
-  const cleanPhone = participantPhone.trim()
-  const fullName = `${cleanFirstName} ${cleanLastName}`.trim()
-
-  if (!cleanFirstName || !cleanLastName) {
-    setSaveStatus('error')
-    alert('Ingresa nombres y apellidos antes de guardar.')
-    return
-  }
-
-  const nextProfile = {
-    id: user.id,
-    email: user.email ?? null,
-    full_name: fullName,
-    first_name: cleanFirstName,
-    last_name: cleanLastName,
-    phone: cleanPhone || null,
-    role: user.role,
-  }
-
-  storeProfile(user.id, nextProfile)
-
-  const { data: savedProfile, error } = await supabase
-    .from('profiles')
-    .upsert(nextProfile, { onConflict: 'id' })
-    .select('*')
-    .single()
-
-  if (error) {
-    console.error('Error guardando perfil:', error.message)
-    setSaveStatus('error')
-    alert(`Error al guardar los datos: ${error.message}`)
-    return
-  }
-
-  const safeProfile = savedProfile as ParticipantProfileRow
-  const resolvedFullName = resolveProfileFullName(safeProfile, user.email) || fullName
-
-  setParticipantProfile({
-    ...safeProfile,
-    full_name: resolvedFullName,
-    first_name: safeProfile.first_name || cleanFirstName,
-    last_name: safeProfile.last_name || cleanLastName,
-    phone: safeProfile.phone || cleanPhone,
-  })
-
-  setParticipantFirstName(safeProfile.first_name || cleanFirstName)
-  setParticipantLastName(safeProfile.last_name || cleanLastName)
-  setParticipantPhone(safeProfile.phone || cleanPhone)
-
-  setUser((prev) =>
-    prev
-      ? {
-          ...prev,
-          fullName: resolvedFullName,
-          email: safeProfile.email ?? prev.email,
-          role: safeProfile.role === 'admin' ? 'admin' : prev.role,
-        }
-      : prev
-  )
-
-  setIsEditingParticipantProfile(false)
-  setSaveStatus('success')
-
-  setTimeout(() => {
-    setSaveStatus('idle')
-  }, 3000)
-}
-async function loadPersonalRank(userId: string) {
-  setPersonalRankLoading(true)
-
-  const { data, error } = await supabase
-    .from('leaderboard')
-    .select('*')
-    .order('total_points', { ascending: false })
-    .order('exact_hits', { ascending: false })
-    .order('goal_diff', { ascending: true })
-
-  if (error) {
-    console.error('Error cargando ranking personal:', error.message)
-    setPersonalRank({
-      position: null,
-      total_points: 0,
-      exact_hits: 0,
-      outcome_hits: 0,
-    })
-    setPersonalRankLoading(false)
-    return
-  }
-
-  const rows = (data as LeaderboardRow[]) ?? []
-  const userRows = rows.filter((row) => row.user_id === userId)
-
-  if (userRows.length === 0) {
-    setPersonalRank({
-      position: null,
-      total_points: 0,
-      exact_hits: 0,
-      outcome_hits: 0,
-    })
-    setPersonalRankLoading(false)
-    return
-  }
-
-  const bestRow = userRows[0]
-  const position =
-    rows.findIndex(
-      (row) =>
-        row.user_id === bestRow.user_id &&
-        row.entry_id === bestRow.entry_id
-    ) + 1
-
-  setPersonalRank({
-    position: position || null,
-    total_points: bestRow.total_points ?? 0,
-    exact_hits: bestRow.exact_hits ?? 0,
-    outcome_hits: bestRow.outcome_hits ?? 0,
-  })
-
-  setPersonalRankLoading(false)
-}
-
-useEffect(() => {
-  async function confirmMercadoPagoPayment() {
-    try {
-      if (typeof window === 'undefined') return
-
-      const params = new URLSearchParams(window.location.search)
-      const status = params.get('status')
-      const paymentId = params.get('payment_id')
-      const entryId = params.get('external_reference')
-
-      if (status !== 'approved' || !paymentId || !entryId) return
-
-      const token = await getSafeAccessToken()
-
-      if (!token) {
-        console.warn('No se pudo confirmar pago: sesión no disponible.')
-        return
-      }
-
-      const res = await fetch('/api/mercadopago/confirm-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          paymentId,
-          entryId,
-        }),
-      })
-
-      const payload = await res.json().catch(() => null)
-
-      if (!res.ok || !payload?.success) {
-        console.error('Error confirmando pago:', payload?.error || res.statusText)
-        return
-      }
-
-      const cleanUrl = `${window.location.origin}${window.location.pathname}`
-      window.history.replaceState({}, '', cleanUrl)
-      window.location.href = '/'
+      // IMPORTANTE:
+      // En login NO actualizamos profiles, porque eso puede pisar los datos personales
+      // que el participante ya guardó previamente.
+      router.refresh();
     } catch (err) {
-      console.error('Error confirmando pago:', err)
+      const msg = err instanceof Error ? err.message : "Ocurrió un error";
+      setLandingError(msg);
+    } finally {
+      setLandingLoading(false);
     }
   }
 
-  confirmMercadoPagoPayment()
-}, [])
+  async function handleForgotPassword() {
+    const email = landingEmail.trim();
 
-useEffect(() => {
-  if (!user?.id) {
-    setParticipantProfile(null)
+    setLandingMessage("");
+    setLandingError("");
+
+    if (!email) {
+      setLandingError(
+        "Escribe tu correo primero para recuperar tu contraseña.",
+      );
+      return;
+    }
+
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/update-password`
+        : "https://www.superquiniela2026.com/update-password";
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      setLandingError(error.message);
+      return;
+    }
+
+    setLandingMessage("Te mandamos un correo para restablecer tu contraseña.");
+  }
+
+  async function loadParticipantProfile(userId: string) {
+    setParticipantProfileLoading(true);
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error cargando perfil del participante:", error.message);
+      setParticipantProfile(null);
+      setParticipantProfileLoading(false);
+      return;
+    }
+
+    const profileData = (data as ParticipantProfileRow | null) ?? null;
+    const storedProfile = getStoredProfile(userId);
+
+    if (!profileData && !storedProfile) {
+      setParticipantProfile(null);
+      setParticipantProfileLoading(false);
+      return;
+    }
+
+    let resolvedProfile = {
+      ...(profileData ?? {}),
+      ...(storedProfile ?? {}),
+      id: userId,
+    } as ParticipantProfileRow;
+
+    const emailUserName = getEmailUserName(resolvedProfile.email);
+    const storedFullName = storedProfile?.full_name?.trim?.() || "";
+    const dbFullName = profileData?.full_name?.trim?.() || "";
+
+    if (
+      storedProfile &&
+      storedFullName &&
+      (!dbFullName || dbFullName.toLowerCase() === emailUserName)
+    ) {
+      const { data: repairedProfile, error: repairError } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            email: storedProfile.email ?? resolvedProfile.email ?? null,
+            full_name: storedProfile.full_name ?? null,
+            first_name: storedProfile.first_name ?? null,
+            last_name: storedProfile.last_name ?? null,
+            phone: storedProfile.phone ?? null,
+            role: storedProfile.role ?? resolvedProfile.role ?? "player",
+          },
+          { onConflict: "id" },
+        )
+        .select("*")
+        .single();
+
+      if (!repairError && repairedProfile) {
+        resolvedProfile = repairedProfile as ParticipantProfileRow;
+      }
+    }
+
+    const fullNameParts = (resolvedProfile.full_name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const inferredFirstName =
+      resolvedProfile.first_name ||
+      (fullNameParts.length > 2
+        ? fullNameParts.slice(0, -2).join(" ")
+        : fullNameParts[0]) ||
+      "";
+    const inferredLastName =
+      resolvedProfile.last_name ||
+      (fullNameParts.length > 2
+        ? fullNameParts.slice(-2).join(" ")
+        : fullNameParts.slice(1).join(" ")) ||
+      "";
+
+    const resolvedFullName = resolveProfileFullName(
+      {
+        ...resolvedProfile,
+        first_name: inferredFirstName,
+        last_name: inferredLastName,
+      },
+      resolvedProfile.email,
+    );
+
+    setParticipantProfile({
+      ...resolvedProfile,
+      full_name: resolvedFullName,
+      first_name: inferredFirstName,
+      last_name: inferredLastName,
+      phone: resolvedProfile.phone || "",
+    });
+
+    setParticipantProfileLoading(false);
+  }
+  async function saveParticipantProfile() {
+    if (!user?.id) return;
+
+    const cleanFirstName = participantFirstName.trim();
+    const cleanLastName = participantLastName.trim();
+    const cleanPhone = participantPhone.trim();
+    const fullName = `${cleanFirstName} ${cleanLastName}`.trim();
+
+    if (!cleanFirstName || !cleanLastName) {
+      setSaveStatus("error");
+      alert("Ingresa nombres y apellidos antes de guardar.");
+      return;
+    }
+
+    const nextProfile = {
+      id: user.id,
+      email: user.email ?? null,
+      full_name: fullName,
+      first_name: cleanFirstName,
+      last_name: cleanLastName,
+      phone: cleanPhone || null,
+      role: user.role,
+    };
+
+    storeProfile(user.id, nextProfile);
+
+    const { data: savedProfile, error } = await supabase
+      .from("profiles")
+      .upsert(nextProfile, { onConflict: "id" })
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Error guardando perfil:", error.message);
+      setSaveStatus("error");
+      alert(`Error al guardar los datos: ${error.message}`);
+      return;
+    }
+
+    const safeProfile = savedProfile as ParticipantProfileRow;
+    const resolvedFullName =
+      resolveProfileFullName(safeProfile, user.email) || fullName;
+
+    setParticipantProfile({
+      ...safeProfile,
+      full_name: resolvedFullName,
+      first_name: safeProfile.first_name || cleanFirstName,
+      last_name: safeProfile.last_name || cleanLastName,
+      phone: safeProfile.phone || cleanPhone,
+    });
+
+    setParticipantFirstName(safeProfile.first_name || cleanFirstName);
+    setParticipantLastName(safeProfile.last_name || cleanLastName);
+    setParticipantPhone(safeProfile.phone || cleanPhone);
+
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            fullName: resolvedFullName,
+            email: safeProfile.email ?? prev.email,
+            role: safeProfile.role === "admin" ? "admin" : prev.role,
+          }
+        : prev,
+    );
+
+    setIsEditingParticipantProfile(false);
+    setSaveStatus("success");
+
+    setTimeout(() => {
+      setSaveStatus("idle");
+    }, 3000);
+  }
+  async function loadPersonalRank(userId: string) {
+    setPersonalRankLoading(true);
+
+    const { data, error } = await supabase
+      .from("leaderboard")
+      .select("*")
+      .order("total_points", { ascending: false })
+      .order("exact_hits", { ascending: false })
+      .order("goal_diff", { ascending: true });
+
+    if (error) {
+      console.error("Error cargando ranking personal:", error.message);
+      setPersonalRank({
+        position: null,
+        total_points: 0,
+        exact_hits: 0,
+        outcome_hits: 0,
+      });
+      setPersonalRankLoading(false);
+      return;
+    }
+
+    const rows = (data as LeaderboardRow[]) ?? [];
+    const userRows = rows.filter((row) => row.user_id === userId);
+
+    if (userRows.length === 0) {
+      setPersonalRank({
+        position: null,
+        total_points: 0,
+        exact_hits: 0,
+        outcome_hits: 0,
+      });
+      setPersonalRankLoading(false);
+      return;
+    }
+
+    const bestRow = userRows[0];
+    const position =
+      rows.findIndex(
+        (row) =>
+          row.user_id === bestRow.user_id && row.entry_id === bestRow.entry_id,
+      ) + 1;
+
     setPersonalRank({
-      position: null,
-      total_points: 0,
-      exact_hits: 0,
-      outcome_hits: 0,
-    })
-    return
+      position: position || null,
+      total_points: bestRow.total_points ?? 0,
+      exact_hits: bestRow.exact_hits ?? 0,
+      outcome_hits: bestRow.outcome_hits ?? 0,
+    });
+
+    setPersonalRankLoading(false);
   }
-
-  loadParticipantProfile(user.id)
-  loadPersonalRank(user.id)
-}, [user?.id])
-
-useEffect(() => {
-  setParticipantFirstName(participantProfile?.first_name || '')
-  setParticipantLastName(participantProfile?.last_name || '')
-  setParticipantPhone(participantProfile?.phone || '')
-}, [participantProfile])
-
-useEffect(() => {
-  if (isParticipantEditLocked && isEditingParticipantProfile) {
-    setIsEditingParticipantProfile(false)
-  }
-}, [isParticipantEditLocked, isEditingParticipantProfile])
-
-useEffect(() => {
-  if (!user?.id || typeof window === 'undefined') {
-    setShowTutorialModal(false)
-    return
-  }
-
-  try {
-    const tutorialSeen = window.localStorage.getItem(`quiniela-tutorial-seen-${user.id}`)
-
-    if (!tutorialSeen) {
-      setShowTutorialModal(true)
-    }
-  } catch {
-    setShowTutorialModal(true)
-  }
-}, [user?.id])
-
-useEffect(() => {
-  if (!user?.id) return
-
-  const refreshRank = () => {
-    loadPersonalRank(user.id)
-  }
-
-  const channel = supabase
-    .channel(`personal-rank-${user.id}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'predictions' },
-      refreshRank
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'matches' },
-      refreshRank
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'entries' },
-      refreshRank
-    )
-    .subscribe()
-
-  return () => {
-    supabase.removeChannel(channel)
-  }
-}, [user?.id])
 
   useEffect(() => {
-    let mounted = true
+    async function confirmMercadoPagoPayment() {
+      try {
+        if (typeof window === "undefined") return;
 
-    const loadUser = async () => {
-      const session = await getSafeAuthSession()
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get("status");
+        const paymentId = params.get("payment_id");
+        const entryId = params.get("external_reference");
 
-      if (!mounted) return
+        if (status !== "approved" || !paymentId || !entryId) return;
 
-      if (!session?.user) {
-        setUser(null)
-        return
+        const token = await getSafeAccessToken();
+
+        if (!token) {
+          console.warn("No se pudo confirmar pago: sesión no disponible.");
+          return;
+        }
+
+        const res = await fetch("/api/mercadopago/confirm-payment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            paymentId,
+            entryId,
+          }),
+        });
+
+        const payload = await res.json().catch(() => null);
+
+        if (!res.ok || !payload?.success) {
+          console.error(
+            "Error confirmando pago:",
+            payload?.error || res.statusText,
+          );
+          return;
+        }
+
+        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+        window.history.replaceState({}, "", cleanUrl);
+        window.location.href = "/";
+      } catch (err) {
+        console.error("Error confirmando pago:", err);
       }
-
-      const authUser = session.user
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
-
-      if (!mounted) return
-
-      if (error) {
-  console.error('Error cargando profile:', error.message)
-
-  const fallbackEmail = (authUser.email ?? '').toLowerCase()
-  const fallbackIsAdmin = fallbackEmail === 'rcantoral@cantoralabogados.com'
-
-  setUser({
-    id: authUser.id,
-    email: authUser.email ?? '',
-    fullName: authUser.email ?? 'Jugador',
-    role: fallbackIsAdmin ? 'admin' : 'player',
-  })
-
-  return
-}
-
-      const resolvedEmail = (profile.email ?? authUser.email ?? '').toLowerCase()
-const isForcedAdmin = resolvedEmail === 'rcantoral@cantoralabogados.com'
-
-const storedProfile = getStoredProfile(profile.id)
-
-let resolvedProfile = {
-  ...profile,
-  ...(storedProfile
-    ? {
-        email: storedProfile.email ?? profile.email,
-        full_name: storedProfile.full_name ?? profile.full_name,
-        first_name: storedProfile.first_name ?? profile.first_name,
-        last_name: storedProfile.last_name ?? profile.last_name,
-        phone: storedProfile.phone ?? profile.phone,
-      }
-    : {}),
-  role: profile.role,
-}
-
-const emailUserName = getEmailUserName(resolvedProfile.email ?? authUser.email)
-const storedFullName = storedProfile?.full_name?.trim?.() || ''
-const currentFullName = profile.full_name?.trim?.() || ''
-
-if (
-  storedProfile &&
-  storedFullName &&
-  (!currentFullName || currentFullName.toLowerCase() === emailUserName)
-) {
-  const { data: repairedProfile, error: repairError } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: profile.id,
-        email: storedProfile.email ?? profile.email ?? authUser.email ?? null,
-        full_name: storedProfile.full_name ?? null,
-        first_name: storedProfile.first_name ?? null,
-        last_name: storedProfile.last_name ?? null,
-        phone: storedProfile.phone ?? null,
-        role: profile.role,
-      },
-      { onConflict: 'id' }
-    )
-    .select('*')
-    .single()
-
-  if (!repairError && repairedProfile) {
-    resolvedProfile = repairedProfile
-  }
-}
-
-setUser({
-  id: profile.id,
-  email: resolvedProfile.email ?? authUser.email ?? '',
-  fullName: resolveProfileFullName(resolvedProfile, authUser.email),
-  role: isForcedAdmin ? 'admin' : (resolvedProfile.role ?? 'player'),
-})
     }
 
-    loadUser()
+    confirmMercadoPagoPayment();
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setParticipantProfile(null);
+      setPersonalRank({
+        position: null,
+        total_points: 0,
+        exact_hits: 0,
+        outcome_hits: 0,
+      });
+      return;
+    }
+
+    loadParticipantProfile(user.id);
+    loadPersonalRank(user.id);
+  }, [user?.id]);
+
+  useEffect(() => {
+    setParticipantFirstName(participantProfile?.first_name || "");
+    setParticipantLastName(participantProfile?.last_name || "");
+    setParticipantPhone(participantProfile?.phone || "");
+  }, [participantProfile]);
+
+  useEffect(() => {
+    if (isParticipantEditLocked && isEditingParticipantProfile) {
+      setIsEditingParticipantProfile(false);
+    }
+  }, [isParticipantEditLocked, isEditingParticipantProfile]);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      setShowTutorialModal(false);
+      return;
+    }
+
+    try {
+      const tutorialSeen = window.localStorage.getItem(
+        `quiniela-tutorial-seen-${user.id}`,
+      );
+
+      if (!tutorialSeen) {
+        setShowTutorialModal(true);
+      }
+    } catch {
+      setShowTutorialModal(true);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const refreshRank = () => {
+      loadPersonalRank(user.id);
+    };
+
+    const channel = supabase
+      .channel(`personal-rank-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "predictions" },
+        refreshRank,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        refreshRank,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "entries" },
+        refreshRank,
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUser = async () => {
+      const session = await getSafeAuthSession();
+
+      if (!mounted) return;
+
+      if (!session?.user) {
+        setUser(null);
+        return;
+      }
+
+      const authUser = session.user;
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authUser.id)
+        .single();
+
+      if (!mounted) return;
+
+      if (error) {
+        console.error("Error cargando profile:", error.message);
+
+        const fallbackEmail = (authUser.email ?? "").toLowerCase();
+        const fallbackIsAdmin =
+          fallbackEmail === "rcantoral@cantoralabogados.com";
+
+        setUser({
+          id: authUser.id,
+          email: authUser.email ?? "",
+          fullName: authUser.email ?? "Jugador",
+          role: fallbackIsAdmin ? "admin" : "player",
+        });
+
+        return;
+      }
+
+      const resolvedEmail = (
+        profile.email ??
+        authUser.email ??
+        ""
+      ).toLowerCase();
+      const isForcedAdmin = resolvedEmail === "rcantoral@cantoralabogados.com";
+
+      const storedProfile = getStoredProfile(profile.id);
+
+      let resolvedProfile = {
+        ...profile,
+        ...(storedProfile
+          ? {
+              email: storedProfile.email ?? profile.email,
+              full_name: storedProfile.full_name ?? profile.full_name,
+              first_name: storedProfile.first_name ?? profile.first_name,
+              last_name: storedProfile.last_name ?? profile.last_name,
+              phone: storedProfile.phone ?? profile.phone,
+            }
+          : {}),
+        role: profile.role,
+      };
+
+      const emailUserName = getEmailUserName(
+        resolvedProfile.email ?? authUser.email,
+      );
+      const storedFullName = storedProfile?.full_name?.trim?.() || "";
+      const currentFullName = profile.full_name?.trim?.() || "";
+
+      if (
+        storedProfile &&
+        storedFullName &&
+        (!currentFullName || currentFullName.toLowerCase() === emailUserName)
+      ) {
+        const { data: repairedProfile, error: repairError } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: profile.id,
+              email:
+                storedProfile.email ?? profile.email ?? authUser.email ?? null,
+              full_name: storedProfile.full_name ?? null,
+              first_name: storedProfile.first_name ?? null,
+              last_name: storedProfile.last_name ?? null,
+              phone: storedProfile.phone ?? null,
+              role: profile.role,
+            },
+            { onConflict: "id" },
+          )
+          .select("*")
+          .single();
+
+        if (!repairError && repairedProfile) {
+          resolvedProfile = repairedProfile;
+        }
+      }
+
+      setUser({
+        id: profile.id,
+        email: resolvedProfile.email ?? authUser.email ?? "",
+        fullName: resolveProfileFullName(resolvedProfile, authUser.email),
+        role: isForcedAdmin ? "admin" : (resolvedProfile.role ?? "player"),
+      });
+    };
+
+    loadUser();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      loadUser()
-    })
+      loadUser();
+    });
 
     return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
-  }, [])
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const loadOrCreateEntry = async () => {
       if (!user?.id) {
-        setActiveEntryId(null)
-        setEntries([])
-        return
+        setActiveEntryId(null);
+        setEntries([]);
+        return;
       }
 
       const { data, error } = await supabase
-        .from('entries')
-        .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-        .eq('user_id', user.id)
-        .order('name', { ascending: true })
+        .from("entries")
+        .select(
+          "id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at",
+        )
+        .eq("user_id", user.id)
+        .order("name", { ascending: true });
 
       if (error) {
-        console.error('Error cargando quinielas:', error.message)
-        return
+        console.error("Error cargando quinielas:", error.message);
+        return;
       }
 
       if (data) {
-        setEntries(data as EntryRow[])
+        setEntries(data as EntryRow[]);
       }
 
-      const active = data?.find((e) => e.is_active)
+      const active = data?.find((e) => e.is_active);
 
-if (active) {
-  setActiveEntryId(active.id)
-  return
-}
+      if (active) {
+        setActiveEntryId(active.id);
+        return;
+      }
 
-if ((data?.length ?? 0) > 0) {
-  setActiveEntryId(data?.[0]?.id ?? null)
-  return
-}
+      if ((data?.length ?? 0) > 0) {
+        setActiveEntryId(data?.[0]?.id ?? null);
+        return;
+      }
 
-// Ya no se crean quinielas automáticamente para usuarios sin registro previo.
-setActiveEntryId(null)
-setEntries([])
-return
-    }
+      // Ya no se crean quinielas automáticamente para usuarios sin registro previo.
+      setActiveEntryId(null);
+      setEntries([]);
+      return;
+    };
 
-    loadOrCreateEntry()
-  }, [user])
+    loadOrCreateEntry();
+  }, [user]);
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id) return;
 
     const refreshEntries = async () => {
       const { data, error } = await supabase
-        .from('entries')
-        .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-        .eq('user_id', user.id)
-        .order('name', { ascending: true })
+        .from("entries")
+        .select(
+          "id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at",
+        )
+        .eq("user_id", user.id)
+        .order("name", { ascending: true });
 
       if (error) {
-        console.error('Error refrescando quinielas:', error.message)
-        return
+        console.error("Error refrescando quinielas:", error.message);
+        return;
       }
 
-      const nextEntries = (data as EntryRow[]) ?? []
-      setEntries(nextEntries)
+      const nextEntries = (data as EntryRow[]) ?? [];
+      setEntries(nextEntries);
 
-      const active = nextEntries.find((entry) => entry.is_active)
+      const active = nextEntries.find((entry) => entry.is_active);
       if (active) {
-        setActiveEntryId(active.id)
+        setActiveEntryId(active.id);
       } else if (!activeEntryId && nextEntries.length > 0) {
-        setActiveEntryId(nextEntries[0].id)
+        setActiveEntryId(nextEntries[0].id);
       }
-    }
+    };
 
     const channel = supabase
       .channel(`entries-payment-refresh-${user.id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'entries',
+          event: "*",
+          schema: "public",
+          table: "entries",
           filter: `user_id=eq.${user.id}`,
         },
-        refreshEntries
+        refreshEntries,
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user?.id, activeEntryId])
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, activeEntryId]);
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut();
     } catch (err) {
-      console.error(err)
+      console.error(err);
     }
 
-    setUser(null)
-    openView('dashboard')
-    setPredictions({})
-    setActiveEntryId(null)
-    setEntries([])
-    window.location.href = '/'
-  }
-
+    setUser(null);
+    openView("dashboard");
+    setPredictions({});
+    setActiveEntryId(null);
+    setEntries([]);
+    window.location.href = "/";
+  };
 
   const handleChangeActiveEntry = async (entryId: string) => {
-    if (!user?.id) return
+    if (!user?.id) return;
 
-    const previousId = activeEntryId
-    setActiveEntryId(entryId)
+    const previousId = activeEntryId;
+    setActiveEntryId(entryId);
 
     const { error: deactivateError } = await supabase
-      .from('entries')
+      .from("entries")
       .update({ is_active: false })
-      .eq('user_id', user.id)
+      .eq("user_id", user.id);
 
     if (deactivateError) {
-      console.error(deactivateError.message)
-      setActiveEntryId(previousId ?? null)
-      return
+      console.error(deactivateError.message);
+      setActiveEntryId(previousId ?? null);
+      return;
     }
 
     const { error: activateError } = await supabase
-      .from('entries')
+      .from("entries")
       .update({ is_active: true })
-      .eq('id', entryId)
+      .eq("id", entryId);
 
     if (activateError) {
-      console.error(activateError.message)
-      setActiveEntryId(previousId ?? null)
-      return
+      console.error(activateError.message);
+      setActiveEntryId(previousId ?? null);
+      return;
     }
 
     const { data } = await supabase
-      .from('entries')
-      .select('id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at')
-      .eq('user_id', user.id)
-      .order('name', { ascending: true })
+      .from("entries")
+      .select(
+        "id, name, is_active, payment_status, payment_amount, payment_method, payment_reference, paid_at",
+      )
+      .eq("user_id", user.id)
+      .order("name", { ascending: true });
 
     if (data) {
-      setEntries(data as EntryRow[])
+      setEntries(data as EntryRow[]);
     }
 
-    setPredictions({})
-  }
+    setPredictions({});
+  };
   const handleDeleteActiveEntry = async () => {
-    alert('El borrado de quinielas activas ya está desactivado.')
-  }
+    alert("El borrado de quinielas activas ya está desactivado.");
+  };
   if (!user) {
-  return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-black text-white">
-      <div className="absolute inset-0 z-0 flex items-start justify-center overflow-hidden">
-        <img
-          src="/landing-bg.png"
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none w-full min-w-full select-none object-top md:h-full md:w-auto md:min-w-0 md:max-w-none md:object-contain"
-        />
-      </div>
+    return (
+      <main className="relative min-h-screen w-full overflow-hidden bg-black text-white">
+        <div className="absolute inset-0 z-0 flex items-start justify-center overflow-hidden">
+          <img
+            src="/landing-bg.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none w-full min-w-full select-none object-top md:h-full md:w-auto md:min-w-0 md:max-w-none md:object-contain"
+          />
+        </div>
 
-      <div className="absolute inset-0 z-10 bg-black/25" />
-      <div className="absolute inset-x-0 bottom-0 z-10 h-[46vh] bg-gradient-to-t from-black via-black/85 to-transparent" />
+        <div className="absolute inset-0 z-10 bg-black/25" />
+        <div className="absolute inset-x-0 bottom-0 z-10 h-[46vh] bg-gradient-to-t from-black via-black/85 to-transparent" />
 
-<section className="relative z-20 flex min-h-screen w-full flex-col items-center justify-end px-6 pb-20 text-center md:px-16 md:pb-0">
-        <div className="w-full max-w-3xl md:translate-y-[8px]">
-          <p className="mx-auto mb-4 w-full max-w-[360px] bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 bg-clip-text text-base font-bold leading-relaxed text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] sm:max-w-xl sm:text-lg md:max-w-2xl md:text-xl md:leading-snug">
-            Tu pasión. Tus números. Tu suerte. <br />
-            Vive la emoción del fútbol como nunca antes, con nuestra ya tradicional quiniela.
-          </p>
-
-          <form
-            onSubmit={handleLandingAuth}
-            className="mx-auto w-full max-w-md rounded-2xl border border-yellow-400/20 bg-black/70 p-6 shadow-2xl backdrop-blur-xl md:max-w-[430px] md:p-5"
-          >
-            <h2 className="mb-2 text-xl font-bold text-white md:text-2xl">
-              {landingIsRegister ? 'Crear cuenta' : 'Iniciar sesión'}
-            </h2>
-
-            <p className="mb-6 text-sm text-white/60 md:mb-4">
-              {landingIsRegister
-                ? 'Registra tu usuario con tus datos'
-                : 'Entra con tu correo y contraseña'}
+        <section className="relative z-20 flex min-h-screen w-full flex-col items-center justify-end px-6 pb-20 text-center md:px-16 md:pb-0">
+          <div className="w-full max-w-3xl md:translate-y-[8px]">
+            <p className="mx-auto mb-4 w-full max-w-[360px] bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-700 bg-clip-text text-base font-bold leading-relaxed text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] sm:max-w-xl sm:text-lg md:max-w-2xl md:text-xl md:leading-snug">
+              Tu pasión. Tus números. Tu suerte. <br />
+              Vive la emoción del fútbol como nunca antes, con nuestra ya
+              tradicional quiniela.
             </p>
 
-            {landingIsRegister && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Nombres"
-                  value={landingFirstName}
-                  onChange={(e) => setLandingFirstName(e.target.value)}
-                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-                />
-
-                <input
-                  type="text"
-                  placeholder="Apellidos"
-                  value={landingLastName}
-                  onChange={(e) => setLandingLastName(e.target.value)}
-                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-                />
-
-                <input
-                  type="tel"
-                  placeholder="Teléfono"
-                  value={landingPhone}
-                  onChange={(e) => setLandingPhone(e.target.value)}
-                  className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-                />
-              </>
-            )}
-
-            <input
-              type="email"
-              placeholder="tu@email.com"
-              value={landingEmail}
-              onChange={(e) => setLandingEmail(e.target.value)}
-              required
-              className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-            />
-
-            <input
-              type="password"
-              placeholder="Contraseña"
-              value={landingPassword}
-              onChange={(e) => setLandingPassword(e.target.value)}
-              required
-              className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
-            />
-
-            <button
-              type="submit"
-              disabled={landingLoading}
-              className="w-full rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 py-3 font-bold text-black shadow-[0_0_25px_rgba(250,204,21,0.25)] transition hover:scale-[1.02] disabled:opacity-50"
+            <form
+              onSubmit={handleLandingAuth}
+              className="mx-auto w-full max-w-md rounded-2xl border border-yellow-400/20 bg-black/70 p-6 shadow-2xl backdrop-blur-xl md:max-w-[430px] md:p-5"
             >
-              {landingLoading
-                ? landingIsRegister
-                  ? 'Creando cuenta...'
-                  : 'Entrando...'
-                : landingIsRegister
-                  ? 'Crear cuenta'
-                  : 'Entrar'}
-            </button>
+              <h2 className="mb-2 text-xl font-bold text-white md:text-2xl">
+                {landingIsRegister ? "Crear cuenta" : "Iniciar sesión"}
+              </h2>
 
-            {!landingIsRegister && (
+              <p className="mb-6 text-sm text-white/60 md:mb-4">
+                {landingIsRegister
+                  ? "Registra tu usuario con tus datos"
+                  : "Entra con tu correo y contraseña"}
+              </p>
+
+              {landingIsRegister && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Nombres"
+                    value={landingFirstName}
+                    onChange={(e) => setLandingFirstName(e.target.value)}
+                    className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Apellidos"
+                    value={landingLastName}
+                    onChange={(e) => setLandingLastName(e.target.value)}
+                    className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  />
+
+                  <input
+                    type="tel"
+                    placeholder="Teléfono"
+                    value={landingPhone}
+                    onChange={(e) => setLandingPhone(e.target.value)}
+                    className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+                  />
+                </>
+              )}
+
+              <input
+                type="email"
+                placeholder="tu@email.com"
+                value={landingEmail}
+                onChange={(e) => setLandingEmail(e.target.value)}
+                required
+                className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+              />
+
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={landingPassword}
+                onChange={(e) => setLandingPassword(e.target.value)}
+                required
+                className="mb-4 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none"
+              />
+
+              <button
+                type="submit"
+                disabled={landingLoading}
+                className="w-full rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 py-3 font-bold text-black shadow-[0_0_25px_rgba(250,204,21,0.25)] transition hover:scale-[1.02] disabled:opacity-50"
+              >
+                {landingLoading
+                  ? landingIsRegister
+                    ? "Creando cuenta..."
+                    : "Entrando..."
+                  : landingIsRegister
+                    ? "Crear cuenta"
+                    : "Entrar"}
+              </button>
+
+              {!landingIsRegister && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="mt-3 w-full text-sm font-semibold text-yellow-300 transition hover:text-yellow-200"
+                >
+                  Olvidé mi contraseña
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={handleForgotPassword}
-                className="mt-3 w-full text-sm font-semibold text-yellow-300 transition hover:text-yellow-200"
+                onClick={() => {
+                  setLandingIsRegister(!landingIsRegister);
+                  setLandingError("");
+                  setLandingMessage("");
+                  setLandingFirstName("");
+                  setLandingLastName("");
+                  setLandingPhone("");
+                }}
+                className="mt-4 w-full text-sm text-white/60 hover:text-white"
               >
-                Olvidé mi contraseña
+                {landingIsRegister
+                  ? "Ya tengo cuenta, quiero iniciar sesión"
+                  : "No tengo cuenta, quiero registrarme"}
               </button>
-            )}
 
+              {landingMessage && (
+                <p className="mt-4 text-center text-sm text-emerald-300">
+                  {landingMessage}
+                </p>
+              )}
+
+              {landingError && (
+                <p className="mt-4 text-center text-sm text-red-300">
+                  {landingError}
+                </p>
+              )}
+            </form>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (view === "picks") {
+    return (
+      <PicksScreen
+        activeEntryId={activeEntryId}
+        predictions={predictions}
+        setPredictions={setPredictions}
+        onBack={() => openView("dashboard")}
+        user={user}
+      />
+    );
+  }
+
+  if (view === "leaderboard") {
+    return (
+      <LeaderboardScreen
+        currentUser={user}
+        onBack={() => openView("dashboard")}
+        onOpenEntry={(entryId) => {
+          setSelectedEntryId(entryId);
+          setEntryDetailReturnView("leaderboard");
+          openView("entry-detail");
+        }}
+      />
+    );
+  }
+
+  if (view === "public") {
+    return (
+      <PublicPicksScreen user={user} onBack={() => openView("dashboard")} />
+    );
+  }
+
+  if (view === "public-by-participant") {
+    return (
+      <PublicPicksByParticipantScreen
+        user={user}
+        onBack={() => openView("dashboard")}
+        onOpenEntry={(entryId) => {
+          setSelectedEntryId(entryId);
+          setEntryDetailReturnView("public-by-participant");
+          openView("entry-detail");
+        }}
+      />
+    );
+  }
+
+  if (view === "entry-detail") {
+    if (!selectedEntryId) {
+      return (
+        <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+          <div className="mx-auto max-w-5xl">
             <button
-              type="button"
-              onClick={() => {
-                setLandingIsRegister(!landingIsRegister)
-                setLandingError('')
-                setLandingMessage('')
-                setLandingFirstName('')
-                setLandingLastName('')
-                setLandingPhone('')
-              }}
-              className="mt-4 w-full text-sm text-white/60 hover:text-white"
+              onClick={() => openView(entryDetailReturnView)}
+              className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
             >
-              {landingIsRegister
-                ? 'Ya tengo cuenta, quiero iniciar sesión'
-                : 'No tengo cuenta, quiero registrarme'}
+              ← Volver
             </button>
 
-            {landingMessage && (
-              <p className="mt-4 text-center text-sm text-emerald-300">
-                {landingMessage}
+            <div className="rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+              <p className="text-lg font-semibold text-white">
+                No hay una quiniela seleccionada
               </p>
-            )}
+            </div>
+          </div>
+        </main>
+      );
+    }
 
-            {landingError && (
-              <p className="mt-4 text-center text-sm text-red-300">
-                {landingError}
-              </p>
-            )}
-          </form>
-        </div>
-      </section>
-    
+    return (
+      <EntryDetailScreen
+        entryId={selectedEntryId}
+        onBack={() => openView(entryDetailReturnView)}
+        backLabel={
+          entryDetailReturnView === "leaderboard"
+            ? "Regresar a tabla general"
+            : "Volver"
+        }
+      />
+    );
+  }
+  if (view === "participant-data") {
+    const isEditingLocked = isParticipantEditLocked;
 
-</main>
-  )
-}
-
-  if (view === 'picks') {
-  return (
-    <PicksScreen
-      activeEntryId={activeEntryId}
-      predictions={predictions}
-      setPredictions={setPredictions}
-      onBack={() => openView('dashboard')}
-      user={user}
-    />
-  )
-}
-
-if (view === 'leaderboard') {
-  return <LeaderboardScreen currentUser={user} onBack={() => openView('dashboard')} />
-}
-
-if (view === 'public') {
-  return (
-    <PublicPicksScreen
-      user={user}
-      onBack={() => openView('dashboard')}
-    />
-  )
-}
-
-if (view === 'public-by-participant') {
-  return (
-    <PublicPicksByParticipantScreen
-      user={user}
-      onBack={() => openView('dashboard')}
-      onOpenEntry={(entryId) => {
-        setSelectedEntryId(entryId)
-        openView('entry-detail')
-      }}
-    />
-  )
-}
-
-if (view === 'entry-detail') {
-  if (!selectedEntryId) {
     return (
       <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
           <button
-            onClick={() => openView('public-by-participant')}
+            onClick={() => openView("dashboard")}
             className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
           >
             ← Volver
           </button>
 
-          <div className="rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
-            <p className="text-lg font-semibold text-white">
-              No hay una quiniela seleccionada
+          <section className="rounded-3xl border border-yellow-500/20 bg-white/5 p-8 shadow-xl">
+            <h1 className="text-3xl font-bold text-yellow-400 md:text-5xl">
+              Datos del Participante
+            </h1>
+
+            <p className="mt-3 text-sm text-white/65">
+              Aquí podrás ver y editar tus datos personales hasta el cierre
+              oficial de captura.
             </p>
-          </div>
-        </div>
-      </main>
-    )
-  }
 
-  return (
-    <EntryDetailScreen
-      entryId={selectedEntryId}
-      onBack={() => openView('public-by-participant')}
-    />
-  )
-}
-if (view === 'participant-data') {
-  const isEditingLocked = isParticipantEditLocked
-
-  return (
-    <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
-      <div className="mx-auto max-w-6xl">
-        <button
-          onClick={() => openView('dashboard')}
-          className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
-        >
-          ← Volver
-        </button>
-
-        <section className="rounded-3xl border border-yellow-500/20 bg-white/5 p-8 shadow-xl">
-          <h1 className="text-3xl font-bold text-yellow-400 md:text-5xl">
-            Datos del Participante
-          </h1>
-
-          <p className="mt-3 text-sm text-white/65">
-  Aquí podrás ver y editar tus datos personales hasta el cierre oficial de captura.
-</p>
-
-<p className="mt-2 text-xs uppercase tracking-[0.18em] text-white/45">
-  Cierre de edición: 11 de junio 2026 · 10:00 AM (CDMX)
-</p>
-
-        </section>
-<section className="mt-8 grid gap-4 md:grid-cols-4">
-  <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-      Tu posición
-    </p>
-    <p className="mt-2 text-3xl font-bold text-yellow-400">
-      {personalRankLoading ? '...' : personalRank.position ?? '—'}
-    </p>
-  </div>
-
-  <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
-      Puntos Totales
-    </p>
-    <p className="mt-2 text-3xl font-bold text-white">
-      {personalRankLoading ? '...' : personalRank.total_points}
-    </p>
-  </div>
-
-  <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 shadow-xl">
-    <p className="text-[11px] uppercase tracking-[0.22em] text-emerald-200/70">
-      Marcadores Exactos
-    </p>
-    <p className="mt-2 text-3xl font-bold text-emerald-100">
-      {personalRankLoading ? '...' : personalRank.exact_hits}
-    </p>
-  </div>
-
-  <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 shadow-xl">
-    <p className="text-[11px] uppercase tracking-[0.22em] text-amber-200/70">
-      Aciertos
-    </p>
-    <p className="mt-2 text-3xl font-bold text-amber-100">
-      {personalRankLoading ? '...' : personalRank.outcome_hits}
-    </p>
-  </div>
-</section>
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-  <h2 className="text-xl font-bold text-yellow-400">
-    Información personal
-  </h2>
-
-{saveStatus === 'error' && (
-  <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">
-    Error al guardar los datos ❌
-  </div>
-)}
-
-  <div className="flex items-center gap-3">
-    <button
-      type="button"
-      disabled={isEditingLocked}
-      onClick={() => {
-  const next = !isEditingParticipantProfile
-  setIsEditingParticipantProfile(next)
-
-  if (next) {
-    // Cuando entra en modo edición → limpiar campos
-    setParticipantFirstName('')
-    setParticipantLastName('')
-    setParticipantPhone('')
-  }
-}}
-      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-        isEditingLocked
-          ? 'cursor-not-allowed border border-white/10 bg-white/5 text-white/35'
-          : isEditingParticipantProfile
-            ? 'border border-white/15 bg-white/10 text-white hover:bg-white/15'
-            : 'border border-yellow-400/30 bg-yellow-400/10 text-yellow-200 hover:bg-yellow-400/15'
-      }`}
-    >
-      {isEditingParticipantProfile ? 'Cancelar' : 'Editar datos'}
-    </button>
-
-    {isEditingParticipantProfile && !isEditingLocked && (
-      <button
-        type="button"
-        onClick={saveParticipantProfile}
-        className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15"
-      >
-        Guardar cambios
-      </button>
-    )}
-  </div>
-</div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <input
-  value={
-    isEditingParticipantProfile
-      ? `${participantFirstName} ${participantLastName}`.trim()
-      : participantProfile?.full_name || user?.fullName || ''
-  }
-  readOnly
-  className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white"
-/>
-
-            <input
-              value={participantProfile?.email || user?.email || ''}
-              readOnly
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white"
-            />
-
-            <input
-  value={isEditingParticipantProfile ? participantFirstName : participantProfile?.first_name || ''}
-  onChange={(e) => setParticipantFirstName(e.target.value)}
-  readOnly={!isEditingParticipantProfile || isEditingLocked}
-  placeholder="Nombres"
-  className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${
-    isEditingParticipantProfile && !isEditingLocked
-      ? 'border-yellow-400/30 bg-black/40 focus:border-yellow-400/50'
-      : 'border-white/10 bg-black/30'
-  }`}
- />
-
-            <input
-  value={isEditingParticipantProfile ? participantLastName : participantProfile?.last_name || ''}
-  onChange={(e) => setParticipantLastName(e.target.value)}
-  readOnly={!isEditingParticipantProfile || isEditingLocked}
-  placeholder="Apellidos"
-  className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${
-    isEditingParticipantProfile && !isEditingLocked
-      ? 'border-yellow-400/30 bg-black/40 focus:border-yellow-400/50'
-      : 'border-white/10 bg-black/30'
-  }`}
- />
-
-            <input
- value={isEditingParticipantProfile ? participantPhone : participantProfile?.phone || ''}
-  onChange={(e) => setParticipantPhone(e.target.value)}
-  readOnly={!isEditingParticipantProfile || isEditingLocked}
-  placeholder="Teléfono"
-  className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${
-    isEditingParticipantProfile && !isEditingLocked
-      ? 'border-yellow-400/30 bg-black/40 focus:border-yellow-400/50'
-      : 'border-white/10 bg-black/30'
-  }`}
- />
-
-            <input
-              value={participantProfile?.role || user?.role || ''}
-              readOnly
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white"
-            />
-          </div>
-        </section>
-      </div>
-    
-<WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
-
-</main>
-  )
-}
-
-if (view === 'admin') {
-  if (user?.role !== 'admin') {
-    return (
-      <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
-        <div className="mx-auto max-w-5xl">
-          <button
-            onClick={() => openView('dashboard')}
-            className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
-          >
-            ← Volver
-          </button>
-
-          <div className="rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
-            <p className="text-lg font-semibold text-white">
-              No tienes acceso a esta sección.
+            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-white/45">
+              Cierre de edición: 11 de junio 2026 · 10:00 AM (CDMX)
             </p>
-          </div>
+          </section>
+          <section className="mt-8 grid gap-4 md:grid-cols-4">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                Tu posición
+              </p>
+              <p className="mt-2 text-3xl font-bold text-yellow-400">
+                {personalRankLoading ? "..." : (personalRank.position ?? "—")}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+                Puntos Totales
+              </p>
+              <p className="mt-2 text-3xl font-bold text-white">
+                {personalRankLoading ? "..." : personalRank.total_points}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-5 shadow-xl">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-emerald-200/70">
+                Marcadores Exactos
+              </p>
+              <p className="mt-2 text-3xl font-bold text-emerald-100">
+                {personalRankLoading ? "..." : personalRank.exact_hits}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-5 shadow-xl">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-amber-200/70">
+                Aciertos
+              </p>
+              <p className="mt-2 text-3xl font-bold text-amber-100">
+                {personalRankLoading ? "..." : personalRank.outcome_hits}
+              </p>
+            </div>
+          </section>
+          <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-xl font-bold text-yellow-400">
+                Información personal
+              </h2>
+
+              {saveStatus === "error" && (
+                <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">
+                  Error al guardar los datos ❌
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isEditingLocked}
+                  onClick={() => {
+                    const next = !isEditingParticipantProfile;
+                    setIsEditingParticipantProfile(next);
+
+                    if (next) {
+                      // Cuando entra en modo edición → limpiar campos
+                      setParticipantFirstName("");
+                      setParticipantLastName("");
+                      setParticipantPhone("");
+                    }
+                  }}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                    isEditingLocked
+                      ? "cursor-not-allowed border border-white/10 bg-white/5 text-white/35"
+                      : isEditingParticipantProfile
+                        ? "border border-white/15 bg-white/10 text-white hover:bg-white/15"
+                        : "border border-yellow-400/30 bg-yellow-400/10 text-yellow-200 hover:bg-yellow-400/15"
+                  }`}
+                >
+                  {isEditingParticipantProfile ? "Cancelar" : "Editar datos"}
+                </button>
+
+                {isEditingParticipantProfile && !isEditingLocked && (
+                  <button
+                    type="button"
+                    onClick={saveParticipantProfile}
+                    className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15"
+                  >
+                    Guardar cambios
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <input
+                value={
+                  isEditingParticipantProfile
+                    ? `${participantFirstName} ${participantLastName}`.trim()
+                    : participantProfile?.full_name || user?.fullName || ""
+                }
+                readOnly
+                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white"
+              />
+
+              <input
+                value={participantProfile?.email || user?.email || ""}
+                readOnly
+                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white"
+              />
+
+              <input
+                value={
+                  isEditingParticipantProfile
+                    ? participantFirstName
+                    : participantProfile?.first_name || ""
+                }
+                onChange={(e) => setParticipantFirstName(e.target.value)}
+                readOnly={!isEditingParticipantProfile || isEditingLocked}
+                placeholder="Nombres"
+                className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${
+                  isEditingParticipantProfile && !isEditingLocked
+                    ? "border-yellow-400/30 bg-black/40 focus:border-yellow-400/50"
+                    : "border-white/10 bg-black/30"
+                }`}
+              />
+
+              <input
+                value={
+                  isEditingParticipantProfile
+                    ? participantLastName
+                    : participantProfile?.last_name || ""
+                }
+                onChange={(e) => setParticipantLastName(e.target.value)}
+                readOnly={!isEditingParticipantProfile || isEditingLocked}
+                placeholder="Apellidos"
+                className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${
+                  isEditingParticipantProfile && !isEditingLocked
+                    ? "border-yellow-400/30 bg-black/40 focus:border-yellow-400/50"
+                    : "border-white/10 bg-black/30"
+                }`}
+              />
+
+              <input
+                value={
+                  isEditingParticipantProfile
+                    ? participantPhone
+                    : participantProfile?.phone || ""
+                }
+                onChange={(e) => setParticipantPhone(e.target.value)}
+                readOnly={!isEditingParticipantProfile || isEditingLocked}
+                placeholder="Teléfono"
+                className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${
+                  isEditingParticipantProfile && !isEditingLocked
+                    ? "border-yellow-400/30 bg-black/40 focus:border-yellow-400/50"
+                    : "border-white/10 bg-black/30"
+                }`}
+              />
+
+              <input
+                value={participantProfile?.role || user?.role || ""}
+                readOnly
+                className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white"
+              />
+            </div>
+          </section>
         </div>
+
+        <WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
       </main>
-    )
+    );
   }
 
-  return <AdminScreen onBack={() => openView('dashboard')} />
-}
+  if (view === "admin") {
+    if (user?.role !== "admin") {
+      return (
+        <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
+          <div className="mx-auto max-w-5xl">
+            <button
+              onClick={() => openView("dashboard")}
+              className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-bold text-white shadow-lg backdrop-blur transition hover:bg-white/20 active:scale-[0.98]"
+            >
+              ← Volver
+            </button>
+
+            <div className="rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+              <p className="text-lg font-semibold text-white">
+                No tienes acceso a esta sección.
+              </p>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
+    return <AdminScreen onBack={() => openView("dashboard")} />;
+  }
   return (
     <main className="min-h-screen bg-black px-6 py-8 text-white md:px-10">
       <TutorialWelcomeModal
         isOpen={showTutorialModal}
         onWatchTutorial={() => {
-          openTutorialVideo()
-          setShowTutorialModal(false)
+          openTutorialVideo();
+          setShowTutorialModal(false);
         }}
         onLater={() => setShowTutorialModal(false)}
         onNeverShowAgain={dismissTutorialForCurrentUser}
@@ -5732,7 +6149,7 @@ if (view === 'admin') {
                   Súper Quiniela 2026
                 </p>
                 <h1 className="truncate text-lg font-extrabold tracking-tight text-white sm:text-xl md:text-2xl">
-                  Hola, {user.fullName ?? 'Usuario'}
+                  Hola, {user.fullName ?? "Usuario"}
                 </h1>
               </div>
             </div>
@@ -5750,7 +6167,7 @@ if (view === 'admin') {
               className="relative min-h-[230px] overflow-hidden rounded-3xl border border-white/10 bg-cover bg-center shadow-xl sm:min-h-[280px] md:min-h-[420px]"
               style={{
                 backgroundImage: "url('/messi.jpg')",
-                backgroundPosition: 'center',
+                backgroundPosition: "center",
               }}
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
@@ -5766,7 +6183,8 @@ if (view === 'admin') {
                 </h2>
 
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/75 md:text-base">
-                  Administra tus quinielas, revisa rankings y vive el torneo con toda la intensidad.
+                  Administra tus quinielas, revisa rankings y vive el torneo con
+                  toda la intensidad.
                 </p>
               </div>
             </div>
@@ -5779,9 +6197,11 @@ if (view === 'admin') {
                       Usuario actual
                     </p>
                     <p className="mt-2 truncate text-base font-bold text-white">
-                      {user.fullName ?? 'Usuario'}
+                      {user.fullName ?? "Usuario"}
                     </p>
-                    <p className="mt-1 truncate text-xs text-white/55">{user.email ?? ''}</p>
+                    <p className="mt-1 truncate text-xs text-white/55">
+                      {user.email ?? ""}
+                    </p>
                   </div>
 
                   <span className="shrink-0 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-yellow-200">
@@ -5795,7 +6215,7 @@ if (view === 'admin') {
                   </p>
 
                   <select
-                    value={activeEntryId ?? ''}
+                    value={activeEntryId ?? ""}
                     onChange={(e) => handleChangeActiveEntry(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-sm font-semibold text-white outline-none transition focus:border-yellow-400/40"
                   >
@@ -5809,155 +6229,167 @@ if (view === 'admin') {
                     ))}
                   </select>
                 </div>
-
               </div>
             </aside>
           </div>
         </header>
 
-<section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-  {/* JACKPOT SOLO PLAYER */}
-  {user.role !== 'admin' && (
-    <div className="order-1 md:order-1 md:col-span-2">
-      <div className="relative w-full overflow-hidden rounded-[2rem] border border-yellow-400/35 bg-gradient-to-br from-yellow-300/15 via-black to-yellow-700/10 px-5 py-6 text-center shadow-[0_0_45px_rgba(250,204,21,0.22)]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.22),transparent_45%)]" />
-        <div className="absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.95)]" />
+        <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
+          {/* JACKPOT SOLO PLAYER */}
+          {user.role !== "admin" && (
+            <div className="order-1 md:order-1 md:col-span-2">
+              <div className="relative w-full overflow-hidden rounded-[2rem] border border-yellow-400/35 bg-gradient-to-br from-yellow-300/15 via-black to-yellow-700/10 px-5 py-6 text-center shadow-[0_0_45px_rgba(250,204,21,0.22)]">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.22),transparent_45%)]" />
+                <div className="absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent shadow-[0_0_25px_rgba(250,204,21,0.95)]" />
 
-        <div className="relative z-10">
-          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-200">
-            <span className="animate-pulse">💰</span>
-            Jackpot Mundialista
-            <span className="animate-pulse">💰</span>
+                <div className="relative z-10">
+                  <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-200">
+                    <span className="animate-pulse">💰</span>
+                    Jackpot Mundialista
+                    <span className="animate-pulse">💰</span>
+                  </div>
+
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
+                    La bolsa real acumulada para nuestra quiniela fue la
+                    cantidad total de
+                  </p>
+
+                  <p className="mt-3 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-4xl font-black tracking-tight text-transparent drop-shadow-[0_0_20px_rgba(250,204,21,0.35)] md:text-6xl">
+                    $354,200.00
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MI QUINIELA */}
+          <div
+            className={`${user.role === "admin" ? "order-2" : "order-2"} md:order-2`}
+          >
+            <DashboardCard
+              title="Mi Quiniela"
+              description="Aquí puedes acceder a tu quiniela. ¡Suerte!"
+              badge="Jugador"
+              onClick={() => openView("picks")}
+            />
           </div>
 
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
-            La bolsa real acumulada para nuestra quiniela fue la cantidad total de
-          </p>
+          {/* TABLA GENERAL */}
+          <div
+            className={`${user.role === "admin" ? "order-3" : "order-3"} md:order-3`}
+          >
+            <DashboardCard
+              title="Tabla general"
+              description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
+              badge="Ranking"
+              onClick={() => openView("leaderboard")}
+            />
+          </div>
 
-          <p className="mt-3 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 bg-clip-text text-4xl font-black tracking-tight text-transparent drop-shadow-[0_0_20px_rgba(250,204,21,0.35)] md:text-6xl">
-            $354,200.00
-          </p>
-        </div>
+          {/* QUINIELAS POR PARTIDO */}
+          <div
+            className={`${user.role === "admin" ? "order-4" : "order-4"} md:order-4`}
+          >
+            <DashboardCard
+              title="Ver todas las Quinielas por partido"
+              description="Aqui podras ver lo que puso cada quien en su quiniela."
+              badge="Público"
+              onClick={() => openView("public")}
+            />
+          </div>
+
+          {/* QUINIELAS POR PARTICIPANTE */}
+          <div
+            className={`${user.role === "admin" ? "order-5" : "order-5"} md:order-5`}
+          >
+            <DashboardCard
+              title="Ver todas las Quinielas por participante"
+              description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
+              badge="Público"
+              onClick={() => openView("public-by-participant")}
+            />
+          </div>
+
+          {/* REGLAMENTO */}
+          <div
+            className={`${user.role === "admin" ? "order-7" : "order-6"} md:order-6`}
+          >
+            <DashboardCard
+              title="Reglamento Oficial"
+              description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
+              badge="Info"
+              onClick={() => router.push("/rules")}
+            />
+          </div>
+
+          {/* DATOS DEL PARTICIPANTE */}
+          <div
+            className={`${user.role === "admin" ? "order-6" : "order-7"} md:order-7`}
+          >
+            <DashboardCard
+              title="Datos del Participante"
+              description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
+              badge="Perfil"
+              onClick={() => openView("participant-data")}
+            />
+          </div>
+
+          {/* TUTORIAL SOLO PLAYER */}
+          {user.role !== "admin" && (
+            <div className="order-8 md:order-8 md:col-span-2">
+              <button
+                type="button"
+                onClick={openTutorialVideo}
+                className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+              >
+                🎥 Ver tutorial
+              </button>
+            </div>
+          )}
+
+          {/* PANEL ADMIN */}
+          {user.role === "admin" && (
+            <div className="order-1 md:order-1 md:col-span-2">
+              <DashboardCard
+                title="Panel de Administración"
+                description="Solo para administradores"
+                badge="Admin"
+                onClick={() => openView("admin")}
+              />
+            </div>
+          )}
+
+          {/* TUTORIAL + BOLSA SOLO ADMIN */}
+          {user.role === "admin" && (
+            <div className="order-8 md:order-8 md:col-span-2">
+              <button
+                type="button"
+                onClick={openTutorialVideo}
+                className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
+              >
+                🎥 Ver tutorial
+              </button>
+
+              <div className="mt-4 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black px-5 py-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
+                  Jackpot Mundialista
+                </p>
+
+                <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-yellow-300/80">
+                  La bolsa real acumulada para nuestra quiniela fue la cantidad
+                  total de
+                </p>
+
+                <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
+                  $354,200.00
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
-    </div>
-  )}
 
-  {/* MI QUINIELA */}
-  <div className={`${user.role === 'admin' ? 'order-2' : 'order-2'} md:order-2`}>
-    <DashboardCard
-      title="Mi Quiniela"
-      description="Aquí puedes acceder a tu quiniela. ¡Suerte!"
-      badge="Jugador"
-      onClick={() => openView('picks')}
-    />
-  </div>
-
-  {/* TABLA GENERAL */}
-  <div className={`${user.role === 'admin' ? 'order-3' : 'order-3'} md:order-3`}>
-    <DashboardCard
-      title="Tabla general"
-      description="Consulta posiciones, puntos acumulados, exactos y desempates de cada Quiniela y participante."
-      badge="Ranking"
-      onClick={() => openView('leaderboard')}
-    />
-  </div>
-
-  {/* QUINIELAS POR PARTIDO */}
-  <div className={`${user.role === 'admin' ? 'order-4' : 'order-4'} md:order-4`}>
-    <DashboardCard
-      title="Ver todas las Quinielas por partido"
-      description="Aqui podras ver lo que puso cada quien en su quiniela."
-      badge="Público"
-      onClick={() => openView('public')}
-    />
-  </div>
-
-  {/* QUINIELAS POR PARTICIPANTE */}
-  <div className={`${user.role === 'admin' ? 'order-5' : 'order-5'} md:order-5`}>
-    <DashboardCard
-      title="Ver todas las Quinielas por participante"
-      description="Explora las quinielas agrupadas por participante y abre el detalle completo de cada una."
-      badge="Público"
-      onClick={() => openView('public-by-participant')}
-    />
-  </div>
-
-  {/* REGLAMENTO */}
-  <div className={`${user.role === 'admin' ? 'order-7' : 'order-6'} md:order-6`}>
-    <DashboardCard
-      title="Reglamento Oficial"
-      description="Consulta las reglas, el sistema de puntos, las fechas importantes y los premios de la quiniela."
-      badge="Info"
-      onClick={() => router.push('/rules')}
-    />
-  </div>
-
-  {/* DATOS DEL PARTICIPANTE */}
-  <div className={`${user.role === 'admin' ? 'order-6' : 'order-7'} md:order-7`}>
-    <DashboardCard
-      title="Datos del Participante"
-      description="Consulta y edita tus datos personales antes de que termine el countdown de tu quiniela."
-      badge="Perfil"
-      onClick={() => openView('participant-data')}
-    />
-  </div>
-
-  {/* TUTORIAL SOLO PLAYER */}
-  {user.role !== 'admin' && (
-    <div className="order-8 md:order-8 md:col-span-2">
-      <button
-        type="button"
-        onClick={openTutorialVideo}
-        className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
-      >
-        🎥 Ver tutorial
-      </button>
-    </div>
-  )}
-
-  {/* PANEL ADMIN */}
-  {user.role === 'admin' && (
-    <div className="order-1 md:order-1 md:col-span-2">
-      <DashboardCard
-        title="Panel de Administración"
-        description="Solo para administradores"
-        badge="Admin"
-        onClick={() => openView('admin')}
-      />
-    </div>
-  )}
-
-  {/* TUTORIAL + BOLSA SOLO ADMIN */}
-  {user.role === 'admin' && (
-    <div className="order-8 md:order-8 md:col-span-2">
-      <button
-        type="button"
-        onClick={openTutorialVideo}
-        className="w-full rounded-2xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-4 text-base font-black text-yellow-100 shadow-lg transition hover:bg-yellow-400/15 active:scale-[0.98]"
-      >
-        🎥 Ver tutorial
-      </button>
-
-      <div className="mt-4 rounded-3xl border border-yellow-400/25 bg-gradient-to-br from-yellow-400/10 via-white/[0.03] to-black px-5 py-5 text-center shadow-[0_0_30px_rgba(250,204,21,0.12)]">
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300/80">
-          Jackpot Mundialista
-        </p>
-
-        <p className="mt-3 text-xs font-black uppercase tracking-[0.22em] text-yellow-300/80">
-          La bolsa real acumulada para nuestra quiniela fue la cantidad total de
-        </p>
-
-        <p className="mt-2 text-3xl font-black text-yellow-400 md:text-4xl">
-          $354,200.00
-        </p>
-      </div>
-    </div>
-  )}
-</section>
-      </div>
-    
-<WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
-
-</main>
-  )
+      <WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
+    </main>
+  );
 }
