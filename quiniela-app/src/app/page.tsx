@@ -598,6 +598,64 @@ function parseKickoffToDate(kickoff: string) {
   return new Date(year, month, day, hour, minute);
 }
 
+function getMatchDateHeading(kickoffDate: Date | null, fallbackKickoff: string) {
+  if (!kickoffDate) {
+    return fallbackKickoff.replace(" (Hora CDMX)", "").split(" · ")[0] || "Sin fecha";
+  }
+
+  const weekday = kickoffDate.toLocaleDateString("es-MX", {
+    weekday: "long",
+  });
+  const day = kickoffDate.toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "long",
+  });
+
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${day}`;
+}
+
+function getMatchesByNextToPlay(matches: Match[]) {
+  const now = new Date();
+
+  const decorated = matches.map((match, originalIndex) => {
+    const kickoffDate = parseKickoffToDate(match.kickoff);
+    const kickoffTime = kickoffDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const hasPassed = kickoffDate ? kickoffTime < now.getTime() : false;
+
+    return {
+      match,
+      originalIndex,
+      kickoffDate,
+      kickoffTime,
+      hasPassed,
+    };
+  });
+
+  decorated.sort((a, b) => {
+    if (a.hasPassed !== b.hasPassed) {
+      return a.hasPassed ? 1 : -1;
+    }
+
+    if (a.kickoffTime !== b.kickoffTime) {
+      return a.kickoffTime - b.kickoffTime;
+    }
+
+    return a.originalIndex - b.originalIndex;
+  });
+
+  return decorated.reduce<Record<string, Match[]>>((acc, item) => {
+    const baseHeading = getMatchDateHeading(item.kickoffDate, item.match.kickoff);
+    const heading = item.hasPassed
+      ? `Partidos jugados · ${baseHeading}`
+      : baseHeading;
+
+    if (!acc[heading]) acc[heading] = [];
+    acc[heading].push(item.match);
+
+    return acc;
+  }, {});
+}
+
 function getTimeLock(kickoff: string) {
   const kickoffDate = parseKickoffToDate(kickoff);
   if (!kickoffDate) return false;
@@ -1359,22 +1417,7 @@ function PicksScreen({
   }, [activeEntryId, setPredictions]);
 
   const groupedMatches = useMemo(() => {
-    const grouped = MATCHES.reduce<Record<string, Match[]>>((acc, match) => {
-      if (!acc[match.group]) acc[match.group] = [];
-      acc[match.group].push(match);
-      return acc;
-    }, {});
-
-    Object.values(grouped).forEach((matches) => {
-      matches.sort((a, b) => {
-        const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0;
-        const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0;
-
-        return dateA - dateB;
-      });
-    });
-
-    return Object.fromEntries(sortGroupStageEntries(Object.entries(grouped)));
+    return getMatchesByNextToPlay(MATCHES);
   }, []);
 
   const totalCompleted = Object.values(predictions).filter(
