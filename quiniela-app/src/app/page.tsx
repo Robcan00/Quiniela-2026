@@ -614,13 +614,22 @@ function getMatchDateHeading(kickoffDate: Date | null, fallbackKickoff: string) 
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${day}`;
 }
 
+const MATCH_VISIBLE_AFTER_KICKOFF_MS = 150 * 60 * 1000; // 2 horas de partido + 30 minutos después
+
+function getMatchActiveUntil(kickoffDate: Date | null) {
+  return kickoffDate
+    ? kickoffDate.getTime() + MATCH_VISIBLE_AFTER_KICKOFF_MS
+    : Number.MAX_SAFE_INTEGER;
+}
+
 function getMatchesByNextToPlay(matches: Match[]) {
-  const now = new Date();
+  const now = new Date().getTime();
 
   const decorated = matches.map((match, originalIndex) => {
     const kickoffDate = parseKickoffToDate(match.kickoff);
     const kickoffTime = kickoffDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
-    const hasPassed = kickoffDate ? kickoffTime < now.getTime() : false;
+    const activeUntil = getMatchActiveUntil(kickoffDate);
+    const hasPassed = kickoffDate ? now > activeUntil : false;
 
     return {
       match,
@@ -2226,17 +2235,18 @@ payload: ${JSON.stringify(payload)}`);
         resultB.homeScore !== "" &&
         resultB.awayScore !== "";
 
+      const activeUntilA = dateA + MATCH_VISIBLE_AFTER_KICKOFF_MS;
+      const activeUntilB = dateB + MATCH_VISIBLE_AFTER_KICKOFF_MS;
+
       const isPastA =
-        dateA < now ||
-        hasResultA ||
-        stateA?.isFinished ||
-        stateA?.isOpen === false;
+        now > activeUntilA ||
+        ((hasResultA || stateA?.isFinished || stateA?.isOpen === false) &&
+          now > activeUntilA);
 
       const isPastB =
-        dateB < now ||
-        hasResultB ||
-        stateB?.isFinished ||
-        stateB?.isOpen === false;
+        now > activeUntilB ||
+        ((hasResultB || stateB?.isFinished || stateB?.isOpen === false) &&
+          now > activeUntilB);
 
       if (isPastA !== isPastB) return isPastA ? 1 : -1;
 
