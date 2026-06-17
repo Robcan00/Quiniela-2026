@@ -6433,6 +6433,4 @@ export default function Home() {
       </div>
 
       <WhatsAppSupportButton user={user} activeEntryId={activeEntryId} />
-    </main>
-  );
-}
+  
