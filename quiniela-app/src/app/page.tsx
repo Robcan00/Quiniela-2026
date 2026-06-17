@@ -2202,18 +2202,51 @@ payload: ${JSON.stringify(payload)}`);
   }, []);
 
   const groupedMatches = useMemo(() => {
+    const now = new Date().getTime();
+
     const sortedMatches = [...MATCHES].sort((a, b) => {
       const dateA = parseKickoffToDate(a.kickoff)?.getTime() ?? 0;
       const dateB = parseKickoffToDate(b.kickoff)?.getTime() ?? 0;
+
+      const resultA = results[a.id];
+      const resultB = results[b.id];
+
+      const stateA = matchStates[a.id];
+      const stateB = matchStates[b.id];
+
+      const hasResultA =
+        resultA?.homeScore !== undefined &&
+        resultA?.awayScore !== undefined &&
+        resultA.homeScore !== "" &&
+        resultA.awayScore !== "";
+
+      const hasResultB =
+        resultB?.homeScore !== undefined &&
+        resultB?.awayScore !== undefined &&
+        resultB.homeScore !== "" &&
+        resultB.awayScore !== "";
+
+      const isPastA =
+        dateA < now ||
+        hasResultA ||
+        stateA?.isFinished ||
+        stateA?.isOpen === false;
+
+      const isPastB =
+        dateB < now ||
+        hasResultB ||
+        stateB?.isFinished ||
+        stateB?.isOpen === false;
+
+      if (isPastA !== isPastB) return isPastA ? 1 : -1;
 
       return dateA - dateB;
     });
 
     const grouped = sortedMatches.reduce<Record<string, Match[]>>(
       (acc, match) => {
-        const cleanKickoff = match.kickoff.replace(" (Hora CDMX)", "");
-        const [dateLabel] = cleanKickoff.split(" · ");
-        const heading = dateLabel?.toUpperCase() || "SIN FECHA";
+        const kickoffDate = parseKickoffToDate(match.kickoff);
+        const heading = getMatchDateHeading(kickoffDate, match.kickoff);
 
         if (!acc[heading]) acc[heading] = [];
         acc[heading].push(match);
@@ -2223,7 +2256,7 @@ payload: ${JSON.stringify(payload)}`);
     );
 
     return grouped;
-  }, []);
+  }, [results, matchStates]);
 
   const updateResult = (
     matchId: string,
